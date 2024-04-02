@@ -1,0 +1,59 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
+
+[project]
+authors = [
+  {name = "Eric Roberts", email = "eric.roberts@uhn.ca"},
+  {name = "Michael Hoffman", email = "michael.hoffman@utoronto.ca"},
+  {name = "Mehran Karimzadeh"},
+  {name = "Carl Ernst"},
+  {name = "Anshul Kundaje"},
+]
+classifiers = [
+  "Natural Language :: English",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Operating System :: Unix",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Programming Language :: Python :: 3",
+]
+description = "Newmap: tools for genome and methylome mappability"
+# dynamic = ["version"]
+version = "0.1.0"
+name = "newmap"
+readme = "README.rst"
+requires-python = ">=3.9"
+
+[project.license]
+text = "GPL-3.0-only"
+
+[project.scripts]
+newmap-generate-index = "newmap.generate_index:main"
+newmap-count-kmers = "newmap.count_kmers:main"
+
+[project.urls]
+"Bug Tracker" = "https://github.com/hoffmangroup/newmap/issues"
+"Download" = "https://pypi.python.org/pypi/newmap"
+"Homepage" = "https://hoffmanlab.org/proj/newmap"
+
+[tool.setuptools]
+packages = ["newmap"] 
+
+# Enable version inference from scm
+# [tool.setuptools_scm]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.isort]
+combine_star = true
+float_to_top = true
+force_single_line = false
+profile = "google"
+py_version = 3
+
+[tool.cibuildwheel]
+# Only build on CPython 3.9 as minimum targeted abi
+build = "cp39-manylinux_x86_64"

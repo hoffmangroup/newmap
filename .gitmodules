@@ -1,0 +1,3 @@
+[submodule "AvxWindowFmIndex"]
+	path = AvxWindowFmIndex
+	url = git@github.com:TravisWheelerLab/AvxWindowFmIndex.git
