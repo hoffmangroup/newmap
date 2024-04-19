@@ -27,7 +27,7 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
 
     // Create the FM index to query from file
     struct AwFmIndex *index;
-    enum AwFmReturnCode returnCode = 
+    enum AwFmReturnCode returnCode =
         awFmReadIndexFromFile(&index, indexFileName, true);
 
     if(awFmReturnCodeIsFailure(returnCode)){
@@ -37,23 +37,54 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
     }
 
     // NB: This returns nothing
-    struct AwFmKmerSearchList *searchList = 
+    struct AwFmKmerSearchList *searchList =
         awFmCreateKmerSearchList(numKmers);
 
     searchList->count = numKmers;
     for(size_t i = 0; i < numKmers; i++) {
         PyObject *kmerBytes = PyList_GetItem(inputKmerList, i);
-        // Ensure all elements are byte strings to avoid seg faults
-        if (!PyBytes_Check(kmerBytes)) {
-            PyErr_SetString(PyExc_TypeError,
-                    "All elements of the kmer list must be byte strings");
+
+        // NB: Py_size_t is signed and kmerLength is unsigned
+        // We assume lengths are always positive
+
+        // If we can obtain a byte string and size
+        // Put the resulting byte string and size into the search list
+        if(PyBytes_AsStringAndSize(kmerBytes,
+                                   &searchList->kmerSearchData[i].kmerString,
+                                   &searchList->kmerSearchData[i].kmerLength)
+                                   == 0) {  // NB: Returns 0 on success
+            // Ensure the byte string have non-zero length
+            if(searchList->kmerSearchData[i].kmerLength == 0){
+                PyErr_SetString(
+                    PyExc_ValueError,
+                    "All elements of the kmer list must have non-zero length");
+                return NULL;
+            }
+        }
+        // Otherwise a non-byte object was found
+        else {
+            PyErr_SetString(
+                PyExc_TypeError,
+                "All elements of the kmer list must be byte strings");
             return NULL;
         }
 
-        searchList->kmerSearchData[i].kmerLength = PyBytes_Size(kmerBytes);
-        // NB: The kmer strings are never deallocated via freeing the kmer
-        // search list, so we can use as-is
-        searchList->kmerSearchData[i].kmerString = PyBytes_AsString(kmerBytes);
+
+        // // Ensure all elements are byte strings to avoid seg faults
+        // if (!PyBytes_Check(kmerBytes)) {
+        //     PyErr_SetString(PyExc_TypeError,
+        //             "All elements of the kmer list must be byte strings");
+        //     return NULL;
+        // }
+        // //TODO: Ensure all byte strings have non-zero length
+        //
+        // if(PyBytes_Size(kmerBytes) == 0){
+        // }
+        //
+        // searchList->kmerSearchData[i].kmerLength = PyBytes_Size(kmerBytes);
+        // // NB: The kmer strings are never deallocated via freeing the kmer
+        // // search list, so we can use as-is
+        // searchList->kmerSearchData[i].kmerString = PyBytes_AsString(kmerBytes);
     }
 
     awFmParallelSearchCount(index, searchList, numThreads);
@@ -61,11 +92,11 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
     PyObject* returnList = PyList_New(numKmers);
     for(size_t kmerIndex = 0; kmerIndex < searchList->count; kmerIndex++) {
         const uint32_t numHitPositions = searchList->kmerSearchData[kmerIndex].count;
-        
+
         PyList_SetItem(returnList, kmerIndex,
                        PyLong_FromUnsignedLong(numHitPositions));
     }
-    
+
     // Free FM index data structures
     awFmDeallocKmerSearchList(searchList);
     awFmDeallocIndex(index);

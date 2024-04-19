@@ -13,29 +13,35 @@ int generate_fm_index(char *fastaInputFileName,
                       char *indexFileName,
                       uint8_t suffixArrayCompressionRatio,
                       uint8_t kmerLengthInSeedTable);
-
-
 static PyObject* py_generate_fm_index(PyObject* self, PyObject* args) {
-  char* fastaInputFileName;
-  char* indexFileName;
-  uint8_t suffixArrayCompressionRatio;
-  uint8_t kmerLengthInSeedTable;
+    char* fastaInputFileName;
+    char* indexFileName;
+    uint8_t suffixArrayCompressionRatio;
+    uint8_t kmerLengthInSeedTable;
 
-  if (!PyArg_ParseTuple(args, "ssBB",  /* string string u_byte u_byte */
+    if (!PyArg_ParseTuple(args, "ssBB",  /* string string u_byte u_byte */
                         &fastaInputFileName,
                         &indexFileName,
                         &suffixArrayCompressionRatio,
                         &kmerLengthInSeedTable
                         ))
-    return NULL;
+        return NULL;
 
-  generate_fm_index(fastaInputFileName,
-                    indexFileName,
-                    suffixArrayCompressionRatio,
-                    kmerLengthInSeedTable);
+    enum AwFmReturnCode returnCode = generate_fm_index(
+        fastaInputFileName,
+        indexFileName,
+        suffixArrayCompressionRatio,
+        kmerLengthInSeedTable
+    );
 
-  /* Return None in Python */
-  Py_RETURN_NONE;
+    if(returnCode == AwFmFileOpenFail){
+        PyErr_SetString(PyExc_FileNotFoundError,
+            "Could not open fasta file to create index\n");
+        return NULL;
+    }
+
+    /* Return None in Python */
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef generateIndexMethods[] = {
@@ -60,14 +66,14 @@ PyInit__c_newmap_generate_index(void) /* name is important for ref on import */
 }
 
 
-int generate_fm_index(char *fastaInputFileName,
+enum AwFmReturnCode generate_fm_index(char *fastaInputFileName,
                       char *indexFileName,
                       uint8_t suffixArrayCompressionRatio,
                       uint8_t kmerLengthInSeedTable) {
 
     struct AwFmIndex *index;
 
-    struct AwFmIndexConfiguration config = { 
+    struct AwFmIndexConfiguration config = {
             .suffixArrayCompressionRatio = suffixArrayCompressionRatio,
 			.kmerLengthInSeedTable = kmerLengthInSeedTable,
 			.alphabetType = AwFmAlphabetDna,

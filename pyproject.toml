@@ -31,7 +31,7 @@ text = "GPL-3.0-only"
 
 [project.scripts]
 newmap-generate-index = "newmap.generate_index:main"
-newmap-count-kmers = "newmap.count_kmers:main"
+newmap-unique-counts = "newmap.unique_counts:main"
 
 [project.urls]
 "Bug Tracker" = "https://github.com/hoffmangroup/newmap/issues"
@@ -39,7 +39,7 @@ newmap-count-kmers = "newmap.count_kmers:main"
 "Homepage" = "https://hoffmanlab.org/proj/newmap"
 
 [tool.setuptools]
-packages = ["newmap"] 
+packages = ["newmap"]
 
 # Enable version inference from scm
 # [tool.setuptools_scm]
