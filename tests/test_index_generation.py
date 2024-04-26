@@ -14,6 +14,7 @@ class TestGenerateIndex(unittest.TestCase):
     def setUp(self):
         self.test_genome_filename = "test.awfmi"
 
+    @unittest.skip("Test relies on large data file not in respository")
     def test_generate_fm_index(self):
         self.reference_sequence = str(TEST_DATA_PATH / 'genome.fa')
 
