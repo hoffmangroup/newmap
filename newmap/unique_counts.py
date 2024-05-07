@@ -92,7 +92,7 @@ def write_unique_counts(fasta_filename: Path,
                         max_kmer_length: int,
                         num_threads: int,
                         verbose: bool = False):
-
+    # TODO: Add verbosity
     # NB: We open the file in binary mode to get read-only bytes
     with optional_gzip_open(fasta_filename, "rb") as fasta_file:
         # Allow a lookahead on the last kmer to include the final dinucleotide
@@ -103,15 +103,12 @@ def write_unique_counts(fasta_filename: Path,
         # interest
         # Requires a lookahead so that last dinucleotide has enough to
         # form a kmer of at least the maximum length
-        requested_sequence_length = ((kmer_batch_size * max_kmer_length) +
-                                     lookahead_length)
+        requested_sequence_length = kmer_batch_size + lookahead_length
 
         kmer_lengths = range(min_kmer_length, max_kmer_length + 1)
 
         current_sequence_id = b''
         # For each sequence buffer from the fasta file
-        # TODO: Check segment iteration performance
-        # TODO: Add verbosity
         for sequence_segment in sequence_segments(fasta_file,
                                                   requested_sequence_length,
                                                   lookahead_length):
@@ -124,10 +121,19 @@ def write_unique_counts(fasta_filename: Path,
                 # Update the current working sequence id
                 current_sequence_id = sequence_segment.id
 
-            sequence_segment_length = len(sequence_segment.data)
+            # If this is the last sequence segment
+            if sequence_segment.epilogue:
+                # The number of kmers is equal to the entire length of the
+                # sequence segment
+                num_kmers = len(sequence_segment.data)
+            # Otherwise
+            else:
+                # The number of kmers is equal to kmer batch size
+                # (or the sequence segment length minus the lookahead)
+                num_kmers = kmer_batch_size
 
             # Initialize the unique counts for this sequence segment to 0
-            segment_unique_counts = np.zeros(sequence_segment_length,
+            segment_unique_counts = np.zeros(num_kmers,
                                              dtype=np.uint8)
 
             # For each kmer length
@@ -136,13 +142,23 @@ def write_unique_counts(fasta_filename: Path,
                 # NB: At the epilogue of the sequence, out of bounds indexing
                 # after the end of the data will automatically be truncated by
                 # numpy
-                # XXX: prepend 'N's to the remaining kmers per sequence?
                 kmers = [sequence_segment.data[i:i+kmer_length]
-                         for i in range(sequence_segment_length)]
+                         for i in range(num_kmers)]
+
                 count_list = np.array(count_kmers(str(index_filename),
                                                   kmers,
                                                   num_threads),
                                                   dtype=np.uint32)
+
+                # TODO: Handle revere complement counts
+                # It seems that a count on the forward strand would always be
+                # equal to the count on the reverse strand but k length away
+                # e.g. 4-mer
+                # count: n    where kmer is 'CATT', the reverse-complement is
+                #        CATT 'AATG' and count is some number n
+                #        GTAA
+                #           n
+
                 # If we have a unique count (count of 1), record the kmer
                 # length if no previous kmer length has been recorded
                 # Otherwise keep existing kmer length
@@ -151,6 +167,14 @@ def write_unique_counts(fasta_filename: Path,
                              kmer_length,  # NB: value on truth
                              segment_unique_counts).astype(
                              dtype=np.uint8, casting="unsafe")
+
+                # TODO: Find a better method of handling this
+                # All kmers with ambiguity codes are considered non-unique
+                # by definition
+                segment_unique_counts = \
+                    np.where([b'N' in kmer for kmer in kmers],
+                             0,
+                             segment_unique_counts)
 
             # Append the unique counts to a unique count file per sequence
             with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
