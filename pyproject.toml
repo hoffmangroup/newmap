@@ -30,8 +30,7 @@ requires-python = ">=3.9"
 text = "GPL-3.0-only"
 
 [project.scripts]
-newmap-generate-index = "newmap.generate_index:main"
-newmap-unique-counts = "newmap.unique_counts:main"
+newmap = "newmap.main:parse_subcommands"
 
 [project.urls]
 "Bug Tracker" = "https://github.com/hoffmangroup/newmap/issues"

@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 from pathlib import Path
 from sys import stderr
 
@@ -9,103 +8,13 @@ from newmap.util import optional_gzip_open
 from newmap.fasta import sequence_segments
 
 
-UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.uint8"
-
-DEFAULT_KMER_BATCH_SIZE = 100000
-DEFAULT_THREAD_COUNT = 1
-DEFAULT_MINIMUM_KMER_LENGTH = 20
-DEFAULT_MAXIMUM_KMER_LENGTH = 200
-
+COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
 UMAP_KMER_LENGTHS = (24, 36, 50, 100, 150, 200)
-
-
-def get_args():
-    parser = ArgumentParser(
-        description="Creates a binary file with minimum kmer length"
-                    " for uniqueness at each sequence position")
-
-    parser.add_argument(
-        "--fasta-file", "-f",
-        help="Filename of fasta file for kmer generation")
-
-    parser.add_argument(
-        "--index-file", "-i",
-        help="Filename of reference index file for kmer counting.")
-
-    parser.add_argument(
-        "--reverse-index-file", "-r",
-        help="Filename of reversed complement reference index file for kmer counting.")
-
-    parser.add_argument(
-        "--kmer-batch-size", "-s",
-        default=DEFAULT_KMER_BATCH_SIZE,
-        type=int,
-        help="Maximum number of kmers to batch per reference sequence from "
-             "given fasta file."
-             "Use to control memory usage. "
-             "Default is {}" .format(DEFAULT_KMER_BATCH_SIZE))
-
-    parser.add_argument(
-        "--umap-kmer-lengths", "-k",
-        action="store_true",
-        help="Use Umap kmer lengths to generate/reproduce unique counts."
-             "Overrides minimum and maximum kmer lengths."
-    )
-
-    parser.add_argument(
-        "--minimum-kmer-length", "-l",
-        type=int,
-        default=DEFAULT_MINIMUM_KMER_LENGTH,
-        help="Minimum kmer length to consider for uniqueness. "
-             "Default is {}" .format(DEFAULT_MINIMUM_KMER_LENGTH))
-
-    parser.add_argument(
-        "--maximum-kmer-length", "-u",
-        type=int,
-        default=DEFAULT_MAXIMUM_KMER_LENGTH,
-        help="Minimum kmer length to consider for uniqueness. "
-             "Default is {}" .format(DEFAULT_MAXIMUM_KMER_LENGTH))
-
-    parser.add_argument(
-        "--thread-count", "-t",
-        default=DEFAULT_THREAD_COUNT,
-        type=int,
-        help="Number of threads to parallelize kmer counting. "
-             "Default is {}" .format(DEFAULT_THREAD_COUNT))
-
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print additional information to standard error",)
-
-    args = parser.parse_args()
-
-    fasta_filename = args.fasta_file
-    index_filename = args.index_file
-    reverse_index_filename = args.reverse_index_file
-    kmer_batch_size = args.kmer_batch_size
-    umap_kmer_lengths = args.umap_kmer_lengths
-    min_kmer_length = args.minimum_kmer_length
-    max_kmer_length = args.maximum_kmer_length
-    num_threads = args.thread_count
-    verbose = args.verbose
-
-    out_list = [fasta_filename,
-                index_filename,
-                reverse_index_filename,
-                kmer_batch_size,
-                umap_kmer_lengths,
-                min_kmer_length,
-                max_kmer_length,
-                num_threads,
-                verbose]
-
-    return out_list
+UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.uint8"
 
 
 def write_unique_counts(fasta_filename: Path,
                         index_filename: Path,
-                        reverse_index_filename: Path,
                         kmer_batch_size: int,
                         use_umap_kmer_lengths: bool,
                         min_kmer_length: int,
@@ -188,13 +97,12 @@ def write_unique_counts(fasta_filename: Path,
                                         num_threads),
                                       dtype=np.uint32)
 
-                # Count the occurances of kmers on the reverse strand
                 reverse_count_list = np.array(
-                                     count_kmers(
-                                       str(reverse_index_filename),
-                                       kmers,
-                                       num_threads),
-                                     dtype=np.uint32)
+                    count_kmers(str(index_filename),
+                                [kmer.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+                                 for kmer in kmers],
+                                num_threads)
+                )
 
                 if verbose:
                     print("{} unique counts before merging and ambiguity "
@@ -245,27 +153,21 @@ def write_unique_counts(fasta_filename: Path,
                 segment_unique_counts.tofile(unique_count_file)
 
 
-def main():
-    fasta_filename, \
-     index_filename, \
-     reverse_index_filename, \
-     kmer_batch_size, \
-     use_umap_kmer_lengths, \
-     min_kmer_length, \
-     max_kmer_length, \
-     num_threads, \
-     verbose = get_args()
+def main(args):
+    fasta_filename = args.fasta_file
+    index_filename = args.index_file
+    kmer_batch_size = args.kmer_batch_size
+    use_umap_kmer_lengths = args.umap_kmer_lengths
+    min_kmer_length = args.minimum_kmer_length
+    max_kmer_length = args.maximum_kmer_length
+    num_threads = args.thread_count
+    verbose = args.verbose
 
     write_unique_counts(Path(fasta_filename),
                         Path(index_filename),
-                        Path(reverse_index_filename),
                         kmer_batch_size,
                         use_umap_kmer_lengths,
                         min_kmer_length,
                         max_kmer_length,
                         num_threads,
                         verbose)
-
-
-if __name__ == "__main__":
-    main()
