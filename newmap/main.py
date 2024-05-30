@@ -1,15 +1,20 @@
 from argparse import ArgumentParser
 
-from newmap import generate_index, unique_counts
+from newmap import generate_index, unique_counts, unique_counts_conversion
 
+# Defaults for FM-index generation
 DEFAULT_INDEX_NAME = "index.awfmi"
 DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO = 8
 DEFAULT_KMER_LENGTH_IN_SEED_TABLE = 12
 
+# Defaults for minimum kmer length counting
 DEFAULT_KMER_BATCH_SIZE = 100000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_MINIMUM_KMER_LENGTH = 20
 DEFAULT_MAXIMUM_KMER_LENGTH = 200
+
+# Defaults for mappability output
+DEFAULT_KMER_SIZE = 24
 
 
 def parse_subcommands():
@@ -91,7 +96,7 @@ def parse_subcommands():
 
     unique_length_parser.add_argument(
         "--umap-kmer-lengths", "-k",
-        action="store_true",
+        action="store_true"
         help="Use Umap kmer lengths to generate/reproduce unique counts."
              "Overrides minimum and maximum kmer lengths."
     )
@@ -118,6 +123,31 @@ def parse_subcommands():
              "Default is {}" .format(DEFAULT_THREAD_COUNT))
 
     unique_length_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print additional information to standard error",)
+
+    # Create a subparser for the "generate-mappability" command
+    generate_mappability_parser = subparsers.add_parser(
+      "generate-mappability",
+      description="Converts minimum unique kmer length files to mappability "
+                  "file output")
+
+    generate_mappability_parser.set_defaults(
+        func=unique_counts_conversion.main)
+
+    generate_mappability_parser.add_argument(
+        "--kmer-length", "-k",
+        default=DEFAULT_KMER_SIZE,
+        type=int,
+        help="Kmer length for mappability file output. Default is {}".format(
+            DEFAULT_KMER_SIZE))
+
+    generate_mappability_parser.add_argument(
+        "--unique-count-file", "-i",
+        help="Unique count file to convert to bed file")
+
+    generate_mappability_parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print additional information to standard error",)
