@@ -96,7 +96,7 @@ def parse_subcommands():
 
     unique_length_parser.add_argument(
         "--umap-kmer-lengths", "-k",
-        action="store_true"
+        action="store_true",
         help="Use Umap kmer lengths to generate/reproduce unique counts."
              "Overrides minimum and maximum kmer lengths."
     )
@@ -137,15 +137,27 @@ def parse_subcommands():
         func=unique_counts_conversion.main)
 
     generate_mappability_parser.add_argument(
+        "unique_count_file",
+        help="Unique count file to convert to bed file")
+
+    generate_mappability_parser.add_argument(
         "--kmer-length", "-k",
         default=DEFAULT_KMER_SIZE,
         type=int,
         help="Kmer length for mappability file output. Default is {}".format(
             DEFAULT_KMER_SIZE))
 
+    # Add (non-positional) arguments for single-read bed file output
     generate_mappability_parser.add_argument(
-        "--unique-count-file", "-i",
-        help="Unique count file to convert to bed file")
+        "--single-read-bed-file", "-s",
+        help="Filename for single-read mappability BED file output. Use '-' "
+            "for standard output.")
+
+    # Add (non-positional) arguments for multi-read wiggle file output
+    generate_mappability_parser.add_argument(
+        "--multi-read-wig-file", "-m",
+        help="Filename for multi-read mappability WIG file output. Use '-' for "
+             "standard output.")
 
     generate_mappability_parser.add_argument(
         "--verbose",
