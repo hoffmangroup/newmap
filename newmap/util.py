@@ -1,5 +1,6 @@
 import gzip
 from pathlib import Path
+import sys
 
 
 def optional_gzip_open(file_path: Path, mode: str):
@@ -10,3 +11,8 @@ def optional_gzip_open(file_path: Path, mode: str):
         return gzip.open(file_path, mode)
     else:
         return open(file_path, mode)
+
+
+def verbose_print(verbose: bool, *args):
+    if verbose:
+        print(*args, file=sys.stderr)
