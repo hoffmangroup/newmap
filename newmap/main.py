@@ -71,49 +71,36 @@ def parse_subcommands():
     # Create a subparser for the "unique-lengths" command
     unique_length_parser = subparsers.add_parser(
                             "unique-lengths",
-                            description="Creates a binary file with minimum "
-                                        "kmer length for uniqueness at each "
-                                        "sequence position")
+                            description="Creates a binary file with the unique "
+                                        "minimum k-mer length each sequence "
+                                        "position from the range of k-mer "
+                                        "lengths given")
 
     unique_length_parser.set_defaults(func=unique_counts.main)
 
     unique_length_parser.add_argument(
-        "--fasta-file", "-f",
-        help="Filename of fasta file for kmer generation")
+        "index_file",
+        help="Filename of reference index file to count occurances in")
 
     unique_length_parser.add_argument(
-        "--index-file", "-i",
-        help="Filename of reference index file for kmer counting.")
+        "fasta_file",
+        help="Filename of (gzipped) fasta file for kmer generation")
 
     unique_length_parser.add_argument(
         "--kmer-batch-size", "-s",
         default=DEFAULT_KMER_BATCH_SIZE,
         type=int,
         help="Maximum number of kmers to batch per reference sequence from "
-             "given fasta file."
+             "given fasta file. "
              "Use to control memory usage. "
              "Default is {}" .format(DEFAULT_KMER_BATCH_SIZE))
 
     unique_length_parser.add_argument(
-        "--umap-kmer-lengths", "-k",
-        action="store_true",
-        help="Use Umap kmer lengths to generate/reproduce unique counts."
-             "Overrides minimum and maximum kmer lengths."
-    )
-
-    unique_length_parser.add_argument(
-        "--minimum-kmer-length", "-l",
-        type=int,
-        default=DEFAULT_MINIMUM_KMER_LENGTH,
-        help="Minimum kmer length to consider for uniqueness. "
-             "Default is {}" .format(DEFAULT_MINIMUM_KMER_LENGTH))
-
-    unique_length_parser.add_argument(
-        "--maximum-kmer-length", "-u",
-        type=int,
-        default=DEFAULT_MAXIMUM_KMER_LENGTH,
-        help="Minimum kmer length to consider for uniqueness. "
-             "Default is {}" .format(DEFAULT_MAXIMUM_KMER_LENGTH))
+        "--kmer-lengths", "-k",
+        help="Specify k-mer lengths to find unique kmers. "
+             "Use a comma seperated list of increasing lengths "
+             "or a full inclusive set of lengths seperated by a colon. "
+             "Example: 20,24,30 or 20-30.")
 
     unique_length_parser.add_argument(
         "--thread-count", "-t",
