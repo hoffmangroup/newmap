@@ -16,11 +16,3 @@ def optional_gzip_open(file_path: Path, mode: str):
 def verbose_print(verbose: bool, *args):
     if verbose:
         print(*args, file=sys.stderr)
-
-# NB: Must use ceil when attempting to go to higher lengths
-# During binary search
-def ceil_div(a, b):
-    """Returns the integer ceiling of a / b."""
-    # NB: math.ceil(a / b) is not the same as this function
-    # And is floating point-based
-    return -(a // -b)

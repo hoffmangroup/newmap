@@ -5,13 +5,12 @@ import numpy as np
 import numpy.typing as npt
 
 from newmap._c_newmap_count_kmers import count_kmers
-from newmap.util import ceil_div, optional_gzip_open, verbose_print
+from newmap.util import optional_gzip_open, verbose_print
 from newmap.fasta import sequence_segments
 
 KMER_RANGE_SEPARATOR = ":"
 
 COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
-UMAP_KMER_LENGTHS = (24, 36, 50, 100, 150, 200)
 UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.uint8"
 
 
@@ -122,7 +121,7 @@ def write_unique_counts(fasta_filename: Path,
 
 def get_kmer_counts(index_filename: Path,
                     kmers: list[bytes],
-                    num_threads: int) -> npt.ArrayLike:  # uint32
+                    num_threads: int) -> npt.NDArray[np.uint32]:
 
     # Count the occurances of kmers on the forward strand
     count_list = np.array(count_kmers(
@@ -143,12 +142,13 @@ def get_kmer_counts(index_filename: Path,
     return count_list
 
 
+# TODO: Add types
 def binary_search(index_filename,
                   sequence_segment,
                   kmer_lengths,
                   num_kmers,
                   num_threads,
-                  verbose) -> npt.ArrayLike:  # uint8
+                  verbose) -> npt.NDArray[np.uint8]:
 
     max_kmer_length = max(kmer_lengths)
     min_kmer_length = min(kmer_lengths)
@@ -161,18 +161,60 @@ def binary_search(index_filename,
     # NB: Iterating over bytes returns ints
     finished_search = np.array([c == ord(b'N') for c in
                                 sequence_segment.data[:num_kmers]])
+
+    # TODO: Switch to f-strings
+    verbose_print(verbose, "Skipping {} ambigious positions".format(
+                  finished_search.sum()))
+
     # Track current kmer query (for minimum) length
     current_length_query = np.full(num_kmers, starting_kmer_length,
                                    dtype=np.uint32)
-    upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=np.uint32)
+
+    # Inclusive bounds for remaining possible lengths
     lower_length_bound = np.full(num_kmers, min_kmer_length, dtype=np.uint32)
-    # previous_length_query = np.zeros(num_kmers, dtype=np.uint8)
+
+    # The upper search length is bounded by the minimum of:
+    # The maximum length in our search query range
+    # Or the maximum length that does not overlap with an ambiguous base
+    upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=np.uint32)
+    upper_bound_change_count = 0
+    short_kmers_discarded_count = 0
+    # For every non-ambiguous starting position
+    for i in np.nonzero(~finished_search)[0]:
+        # Get what would the maximum length kmer for this position
+        max_length_kmer = sequence_segment.data[i:i+max_kmer_length]
+        # Search for the first occurance of a base that is ambiguous
+        # NB: The index is 0-based, so the index is equal to the length
+        # that excludes its own position
+        maximum_non_ambiguous_length = max_length_kmer.find(b'N')
+        # If we found an index where an ambiguous base is
+        if maximum_non_ambiguous_length != -1:
+            # If the found length is longer than the minimum kmer length
+            if maximum_non_ambiguous_length >= min_kmer_length:
+                # Set the maximum length (to the index of the ambiguous base)
+                upper_length_bound[i] = maximum_non_ambiguous_length
+                # Recalculate the current query length (as a midpoint)
+                current_length_query[i] = np.floor_divide(
+                    upper_length_bound[i] + lower_length_bound[i], 2)
+                upper_bound_change_count += 1
+            # Otherwise
+            else:
+                # Cannot find a length that would be smaller than the minimum
+                # Mark this position as finished
+                short_kmers_discarded_count += 1
+                finished_search[i] = True
+
+    if (verbose and
+       upper_bound_change_count):
+        verbose_print(verbose, f"{upper_bound_change_count} k-mer search ranges "
+                      "truncated due to ambiguity")
+    if (verbose and
+       short_kmers_discarded_count):
+        verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
+                      "than the minimum length discarded due to ambiguity")
 
     # List of minimum lengths (where 0 is nothing was found)
-    unique_lengths = np.zeros(num_kmers, dtype=np.uint8)
-
-    verbose_print(verbose, "Skipping {} ambigious positions".format(
-                  finished_search.sum()))
+    unique_lengths = np.zeros(num_kmers, dtype=np.uint32)
 
     iteration_count = 1
 
@@ -180,155 +222,87 @@ def binary_search(index_filename,
     while not np.all(finished_search):
         # Create our working list of kmers to count
         working_kmers = []
-        # Track which kmer positions need to be counted on the index
-        should_count = np.copy(~finished_search)
 
         verbose_print(verbose, "Iteration {}".format(iteration_count))
         verbose_print(verbose, "{} k-mer positions remaining".format(
-                      np.sum(should_count)))
+                      np.sum(~finished_search)))
 
-        ambigious_overlap_count = 0
-        # For each unfinished searched position
-        for i in np.nonzero(~finished_search)[0]:
-            # Create the kmer from the sequence segment
-            # NB: At the epilogue of the sequence, out of bounds
-            # indexing after the end of the data will automatically
-            # be truncated by numpy
+        # Track which kmer positions need to be counted on the index
+        # Create a list of indices where each index refers to the corresponding
+        # position in the given sequence segment
+        counted_positions = np.nonzero(np.copy(~finished_search))[0]
+
+        # Create a list of kmers to count on the index
+        for i in counted_positions:
             current_kmer_length = current_length_query[i]
             kmer = sequence_segment.data[i:i+current_kmer_length]
-
-            # If it contains an ambiguous base
-            if b'N' in kmer:  # NB: TODO: Add option for which bases
-                # We can only attempt to get shorter on this kmer
-
-                # If we are already at the minimum length
-                if current_kmer_length == min_kmer_length:
-                    # Mark this position as finished
-                    finished_search[i] = True
-                # Else if we have reduced our bounds next to each other
-                # we have finished searching on this position as well
-                elif upper_length_bound[i] - lower_length_bound[i] <= 1:
-                    # Mark this position as finished
-                    finished_search[i] = True
-                # Otherwise attempt to reduce the length further
-                else:
-                    update_query_lengths(i,
-                                         current_length_query,
-                                         upper_length_bound,
-                                         lower_length_bound,
-                                         decrease=True)
-
-                    ambigious_overlap_count += 1
-                # Don't count this kmer on the index
-                should_count[i] = False
-            # Otherwise
-            else:
-                # Add it to our kmers to count
-                working_kmers.append(kmer)
-
-        verbose_print(verbose,
-                      "{} k-mer positions skipped due to ambiguity".format(
-                          ambigious_overlap_count))
+            working_kmers.append(kmer)
 
         # Get the occurances of the kmers on both strands
         count_list = get_kmer_counts(index_filename,
                                      working_kmers,
                                      num_threads)
 
-        # Get the indices of the kmers that should be counted
-        # NB: nonzero returns a tuple for each dimension and we only have 1
-        counted_positions = should_count.nonzero()[0]
+        # TODO: Assert for 0 counts since there must be a mismatch between
+        # sequence and index
 
-        # XXX: Assert equal lengths of counted_positions and count_list
+        # Assert that the number of indices to count and the number of counts
+        # are equal
+        assert counted_positions.size == count_list.size, \
+            "Number of counted positions ({}) and number of counts ({}) " \
+            "do not match".format(len(counted_positions), len(count_list))
 
-        # Binary search for the minimum kmer length based on the counts
-        # For every k-mer submitted for counting (i.e. non-ambiguous k-mer)
-        for i, count in zip(counted_positions, count_list):
-            current_kmer_length = current_length_query[i]
+        # Where we have counts of 1
+        unique_lengths[counted_positions] = np.where(
+            (count_list == 1) &
+            # And if there is no current unique length recorded
+            ((unique_lengths[counted_positions] == 0) |
+            # Or there is a smaller length found than the current unique length
+             (current_length_query[counted_positions] <
+              unique_lengths[counted_positions])),
+            # Record the minimum kmer length found if it less than the current
+            current_length_query[counted_positions],
+            # Otherwise keep the current unique length
+            unique_lengths[counted_positions])
 
-            # If we have searched at the minimum or maximum lengths
-            # This kmer position is finished searching
-            if (current_kmer_length == min_kmer_length or
-                current_kmer_length == max_kmer_length):
-                # Mark as this position as finished
-                finished_search[i] = True
-            # Otherwise if we have reduced our bounds next to each other
-            # we have finished searching on this position as well
-            elif upper_length_bound[i] - lower_length_bound[i] <= 1:
-                # Mark this position as finished
-                finished_search[i] = True
+        # Update the query length and bounds for the next iteration
 
-            # If the result is 1, we have found a unique kmer length
-            if count == 1:
-                # If there is no current count for this positions
-                # Or if this is a smaller length than what we have recorded
-                # currently
-                if (unique_lengths[i] == 0 or
-                   current_kmer_length < unique_lengths[i]):
-                    # Record the current length as the current minimum
-                    # TODO: Parameterize or fix this
-                    unique_lengths[i] = \
-                        current_kmer_length.astype(np.uint8, casting='safe')
+        # Lower the upper bounds of our search range on positions where
+        # We need to decrease our k-mer length (i.e. counts == 1)
+        # Set the new upper (inclusive) bound to the current query length - 1
+        upper_length_bound[counted_positions] = np.where(
+            count_list == 1,
+            current_length_query[counted_positions] - 1,
+            upper_length_bound[counted_positions])
 
-            # Update the query lengths for the next iteration if this position
-            # is not finished searching
-            if not finished_search[i]:
-                if count == 1:
-                    # This position could still be shorter, so continue
-                    # searching at a smaller length
-                    update_query_lengths(
-                        i,
-                        current_length_query,
-                        upper_length_bound,
-                        lower_length_bound,
-                        decrease=True)
-                # Otherwise (if the number of occurances is > 0)
-                else:
-                    # Try to find a longer length that is unique
-                    update_query_lengths(
-                        i,
-                        current_length_query,
-                        upper_length_bound,
-                        lower_length_bound,
-                        decrease=False)
+        # Raise the lower bounds of our search range on positions where
+        # We need to increase our k-mer length (i.e. counts > 1)
+        # Set the new lower (inclusive) bound to the current query length + 1
+        lower_length_bound[counted_positions] = np.where(
+            count_list > 1,
+            current_length_query[counted_positions] + 1,
+            lower_length_bound[counted_positions])
+
+        # Calculate the new query length as the midpoint between the updated
+        # upper and lower bounds
+        current_length_query[counted_positions] = np.floor_divide(
+            upper_length_bound[counted_positions] +
+            lower_length_bound[counted_positions], 2)
+
+        # If we have reduced our bounds to overlapping we have finished
+        # searching on this position
+        finished_search[counted_positions] = \
+            finished_search[counted_positions] | \
+            (upper_length_bound[counted_positions] <
+                lower_length_bound[counted_positions])
 
         iteration_count += 1
 
-    return unique_lengths
+    verbose_print(verbose,
+                  f"Finished searching in {iteration_count-1} iterations")
 
-
-def update_query_lengths(index: int,
-                         current_length_query_list: npt.NDArray[np.uint32],
-                         upper_length_bound_list: npt.NDArray[np.uint32],
-                         lower_length_bound_list: npt.NDArray[np.uint32],
-                         decrease=True):
-    # NB: There is a theoretical chance when calculating the midpoint, we might
-    # overflow whatever integer type we are using (32 bit) if we sum then
-    # divide, however ceiling/floor division divide then sum is not equivalent
-    # We are assuming that lengths will be less than half the max of a u32
-
-    current_length = current_length_query_list[index]
-    new_length = current_length
-
-    # If we are decreasing the length
-    if decrease:
-        # Set the new upper length bound to the current length
-        upper_length_bound_list[index] = current_length
-        # Calculate the new current length as the floor mid point between the
-        # current and lower length bound
-        lower_length_bound = lower_length_bound_list[index]
-        new_length = (current_length + lower_length_bound) // 2
-    # Otherwise we are increasing the length
-    else:
-        # Set the new lower length bound to the current length
-        lower_length_bound_list[index] = current_length
-        # Calculate the new current length as the ceil mid point between the
-        # current and upper length bound
-        upper_length_bound = upper_length_bound_list[index]
-        new_length = ceil_div(current_length + upper_length_bound, 2)
-
-    # Save the newly calculated length
-    current_length_query_list[index] = new_length
+    # TODO: Parameterize this or change depending on lengths found
+    return unique_lengths.astype(np.uint8)
 
 
 def linear_search(index_filename,
