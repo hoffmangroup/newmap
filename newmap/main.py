@@ -37,14 +37,13 @@ def parse_subcommands():
 
     # TODO: Consider changing to -i and -o for input and output
     generate_index_parser.add_argument(
-        "--fasta-file", "-f",
-        required=True,
+        "fasta_file",
         help="Filename of input fasta file")
 
     generate_index_parser.add_argument(
         "--index-file", "-i",
         default=DEFAULT_INDEX_NAME,
-        help="Filename of reference index file for kmer counting. "
+        help="Filename to output the reference index file for kmer counting. "
         "Default is {}".format(DEFAULT_INDEX_NAME))
 
     fm_index_paramater_group = generate_index_parser.add_argument_group(
