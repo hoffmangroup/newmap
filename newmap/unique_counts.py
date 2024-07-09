@@ -14,25 +14,6 @@ COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
 UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.uint8"
 
 
-class KMERQueryState:
-    # Should track:
-    # - If the current position has already found a minimum kmer length
-    # - If the current position should be ignored due to an ambiguous base
-    #   - All kmers longer than this at this position should also be ignored by definition
-    # - Otherwise if no unique minimum kmer length has been found
-    #   - These are the only positions that should be submitted for counting
-
-    # Current minimum kmer length found at this position
-    # Where 0 indicates no minimum kmer length found
-    min_kmer_length: int
-    # If this position has been processed due to minimum length or ambiguity
-    processed: bool
-
-    def __init__(self):
-        self.min_kmer_length = 0
-        self.processed = False
-
-
 def write_unique_counts(fasta_filename: Path,
                         index_filename: Path,
                         kmer_batch_size: int,
@@ -91,7 +72,7 @@ def write_unique_counts(fasta_filename: Path,
                 # (or the sequence segment length minus the lookahead)
                 num_kmers = kmer_batch_size
 
-            verbose_print(verbose, "Processing {} kmers".format(num_kmers))
+            verbose_print(verbose, "Processing {} k-mers".format(num_kmers))
 
             if use_binary_search:
                 segment_unique_counts = binary_search(index_filename,
@@ -163,7 +144,7 @@ def binary_search(index_filename,
                                 sequence_segment.data[:num_kmers]])
 
     # TODO: Switch to f-strings
-    verbose_print(verbose, "Skipping {} ambigious positions".format(
+    verbose_print(verbose, "Skipping {} ambiguous positions".format(
                   finished_search.sum()))
 
     # Track current kmer query (for minimum) length
@@ -311,34 +292,39 @@ def linear_search(index_filename,
                   num_kmers,
                   num_threads,
                   verbose) -> npt.NDArray[np.uint8]:
-    kmer_query_states = [KMERQueryState() for _ in range(num_kmers)]
+    # Track which kmer positions have finished searching,
+    # skipping any kmers starting with an ambiguous base
+    # NB: Iterating over bytes returns ints
+    finished_search = np.array([c == ord(b'N') for c in
+                                sequence_segment.data[:num_kmers]])
+
+    verbose_print(verbose, "Skipping {} ambiguous positions".format(
+                  finished_search.sum()))
+
+    # List of minimum lengths (where 0 is nothing was found)
+    unique_lengths = np.zeros(num_kmers, dtype=np.uint32)
 
     # For each kmer length
     for kmer_length in kmer_lengths:
-        # Create all kmers of that length from the sequence buffer
+        verbose_print(verbose, "{} k-mers remaining".format(
+                      (~finished_search).sum()))
         verbose_print(verbose, "Counting {}-mers".format(kmer_length))
 
         # Create our working list of kmers to count
         working_kmers = []
-        # For each kmer in the sequence segment
-        for i in range(num_kmers):
-            # If a previous kmer length was not found to be ambiguous
-            # Or a previous kmer length was not found to be unique
-            if not kmer_query_states[i].processed:
-                # Create the kmer from the sequence segment
-                # NB: At the epilogue of the sequence, out of bounds
-                # indexing after the end of the data will automatically
-                # be truncated by numpy
-                kmer = sequence_segment.data[i:i+kmer_length]
-                # If it contains an ambiguous base
-                if b'N' in kmer:  # TODO: Add option for which bases
-                    # Ignore it for all longer kmer lengths (i.e. all
-                    # future iterations)
-                    kmer_query_states[i].processed = True
-                # Otherwise
-                else:
-                    # Add it to our working kmer lengths
-                    working_kmers.append(kmer)
+        for i in np.nonzero(~finished_search)[0]:
+            # Create the kmer from the sequence segment
+            # NB: At the epilogue of the sequence, out of bounds
+            # indexing after the end of the data will automatically
+            # be truncated by numpy
+            kmer = sequence_segment.data[i:i+kmer_length]
+            # If it contains an ambiguous base
+            if b'N' in kmer:
+                # Ignore it for all longer kmer lengths (i.e. all
+                # future iterations)
+                finished_search[i] = True
+            else:
+                working_kmers.append(kmer)
 
         # If there are no kmers to count due to ambiguity
         if not working_kmers:
@@ -357,33 +343,31 @@ def linear_search(index_filename,
                                      working_kmers,
                                      num_threads)
 
-        # Update the minimum kmer length found for each kmer
-        count_index = 0
-        min_kmer_lengths_found = 0
-        # For each kmer in our current batch
-        for kmer_query_state in kmer_query_states:
-            # Where our working query list is unprocessed
-            if not kmer_query_state.processed:
-                # And the count is 1
-                if count_list[count_index] == 1:
-                    # Save the minimum kmer length found
-                    kmer_query_state.min_kmer_length = kmer_length
-                    # Mark the query state as processed
-                    kmer_query_state.processed = True
-                    min_kmer_lengths_found += 1
-                # Increment the count indexing
-                count_index += 1
+        counted_positions = np.nonzero(np.copy(~finished_search))[0]
+
+        # Assert that the number of indices to count and the number of counts
+        # are equal
+        assert counted_positions.size == count_list.size, \
+            "Number of counted positions ({}) and number of counts ({}) " \
+            "do not match".format(len(counted_positions), len(count_list))
+
+        unique_lengths[counted_positions] = np.where(
+            # Where the count is 1
+            (count_list == 1) &
+            # And if there is no current unique length recorded
+            (unique_lengths[counted_positions] == 0),
+            # Record the minimum kmer length found if it less than the current
+            kmer_length,
+            # Otherwise keep the current unique length
+            unique_lengths[counted_positions])
+
+        # We are finished searching at this position if the count was 1
+        finished_search[counted_positions] = (count_list == 1)
 
         verbose_print(verbose, "{} unique {}-mers found".format(
-            min_kmer_lengths_found, kmer_length))
+            np.count_nonzero(unique_lengths == kmer_length), kmer_length))
 
-    segment_unique_counts = np.array(
-        [kmer_query_state.min_kmer_length
-         for kmer_query_state in kmer_query_states],
-        dtype=np.uint8)
-
-    return segment_unique_counts
-
+    return unique_lengths.astype(np.uint8)
 
 
 def main(args):
