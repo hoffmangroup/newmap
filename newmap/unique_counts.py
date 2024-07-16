@@ -42,6 +42,10 @@ def write_unique_counts(fasta_filename: Path,
         # form a kmer of at least the maximum length
         requested_sequence_length = kmer_batch_size + lookahead_length
 
+        # Keep track of ambigious positions in the sequence for statistics
+        total_ambiguous_positions = 0
+        total_unique_lengths_count = 0
+        total_no_unique_lengths_count = 0
 
         current_sequence_id = b''
         # For each sequence buffer from the fasta file
@@ -56,6 +60,11 @@ def write_unique_counts(fasta_filename: Path,
                      sequence_segment.id.decode()), "wb").close()
                 # Update the current working sequence id
                 current_sequence_id = sequence_segment.id
+
+                print_summary_statisitcs(verbose,
+                                         total_unique_lengths_count,
+                                         total_ambiguous_positions,
+                                         total_no_unique_lengths_count)
 
                 verbose_print(verbose,
                               "Writing minimum unique lengths for sequence "
@@ -75,29 +84,54 @@ def write_unique_counts(fasta_filename: Path,
             verbose_print(verbose, "Processing {} k-mers".format(num_kmers))
 
             if use_binary_search:
-                segment_unique_counts = binary_search(index_filename,
-                                                      sequence_segment,
-                                                      kmer_lengths,
-                                                      num_kmers,
-                                                      num_threads,
-                                                      verbose)
+                segment_unique_counts, ambiguous_count = \
+                    binary_search(index_filename,
+                                  sequence_segment,
+                                  kmer_lengths,
+                                  num_kmers,
+                                  num_threads,
+                                  verbose)
             else:
-                segment_unique_counts = linear_search(index_filename,
-                                                      sequence_segment,
-                                                      kmer_lengths,
-                                                      num_kmers,
-                                                      num_threads,
-                                                      verbose)
+                segment_unique_counts, ambiguous_count = \
+                    linear_search(index_filename,
+                                  sequence_segment,
+                                  kmer_lengths,
+                                  num_kmers,
+                                  num_threads,
+                                  verbose)
+
+            # Update summary statistics
+            unique_lengths_count = np.count_nonzero(segment_unique_counts)
+            total_ambiguous_positions += ambiguous_count
+            total_unique_lengths_count += unique_lengths_count
+            total_no_unique_lengths_count += (num_kmers -
+                unique_lengths_count - ambiguous_count)
 
             # Append the unique counts to a unique count file per sequence
             with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
               sequence_segment.id.decode()), "ab") as unique_count_file:
                 segment_unique_counts.tofile(unique_count_file)
 
-        # TODO: Output summary statistics per sequence:
-        # Amount of unique lengths found
-        # Amount of positions skipped due to ambiguity
-        # Amount of positions that had no unique length found
+        print_summary_statisitcs(verbose,
+                                 total_unique_lengths_count,
+                                 total_ambiguous_positions,
+                                 total_no_unique_lengths_count)
+
+
+def print_summary_statisitcs(verbose,
+                             total_unique_lengths_count,
+                             total_ambiguous_positions,
+                             total_no_unique_lengths_count):
+    if (verbose and
+            total_unique_lengths_count):
+        verbose_print(verbose,
+                      f"{total_unique_lengths_count} unique lengths found")
+        verbose_print(verbose,
+                      f"{total_ambiguous_positions} positions skipped due to "
+                      "ambiguity")
+        verbose_print(verbose,
+                      f"{total_no_unique_lengths_count} positions with no "
+                      "unique length found")
 
 
 def get_kmer_counts(index_filename: Path,
@@ -129,7 +163,7 @@ def binary_search(index_filename,
                   kmer_lengths,
                   num_kmers,
                   num_threads,
-                  verbose) -> npt.NDArray[np.uint8]:
+                  verbose) -> tuple[npt.NDArray[np.uint8], int]:
 
     max_kmer_length = max(kmer_lengths)
     min_kmer_length = min(kmer_lengths)
@@ -143,9 +177,10 @@ def binary_search(index_filename,
     finished_search = np.array([c == ord(b'N') for c in
                                 sequence_segment.data[:num_kmers]])
 
+    ambiguous_positions_skipped = finished_search.sum()
     # TODO: Switch to f-strings
-    verbose_print(verbose, "Skipping {} ambiguous positions".format(
-                  finished_search.sum()))
+    verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
+                  "positions")
 
     # Track current kmer query (for minimum) length
     current_length_query = np.full(num_kmers, starting_kmer_length,
@@ -160,6 +195,13 @@ def binary_search(index_filename,
     upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=np.uint32)
     upper_bound_change_count = 0
     short_kmers_discarded_count = 0
+
+    # NB: The following is effecitvely O(n^2) where the max k-mer length and
+    # sequence length are similar in size/magnitude
+    # There might be a better way based on finding the ambiguous bases in the
+    # sequence buffer, and then setting the max lengths of the previous
+    # positions based on their location up to the max k away
+
     # For every non-ambiguous starting position
     for i in np.nonzero(~finished_search)[0]:
         # Get what would the maximum length kmer for this position
@@ -167,6 +209,7 @@ def binary_search(index_filename,
         # Search for the first occurance of a base that is ambiguous
         # NB: The index is 0-based, so the index is equal to the length
         # that excludes its own position
+        # NB: This is very slow for large sequences
         maximum_non_ambiguous_length = max_length_kmer.find(b'N')
         # If we found an index where an ambiguous base is
         if maximum_non_ambiguous_length != -1:
@@ -185,10 +228,13 @@ def binary_search(index_filename,
                 short_kmers_discarded_count += 1
                 finished_search[i] = True
 
+    upper_bound_change_count = np.count_nonzero(
+        upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
+
     if (verbose and
        upper_bound_change_count):
-        verbose_print(verbose, f"{upper_bound_change_count} k-mer search ranges "
-                      "truncated due to ambiguity")
+        verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
+                               "ranges truncated due to ambiguity")
     if (verbose and
        short_kmers_discarded_count):
         verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
@@ -282,8 +328,8 @@ def binary_search(index_filename,
     verbose_print(verbose,
                   f"Finished searching in {iteration_count-1} iterations")
 
-    # TODO: Parameterize this or change depending on lengths found
-    return unique_lengths.astype(np.uint8)
+    # TODO: Parameterize the type or change depending on lengths found
+    return unique_lengths.astype(np.uint8), ambiguous_positions_skipped
 
 
 def linear_search(index_filename,
@@ -298,8 +344,9 @@ def linear_search(index_filename,
     finished_search = np.array([c == ord(b'N') for c in
                                 sequence_segment.data[:num_kmers]])
 
-    verbose_print(verbose, "Skipping {} ambiguous positions".format(
-                  finished_search.sum()))
+    ambiguous_positions_skipped = finished_search.sum()
+    verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
+                  "positions")
 
     # List of minimum lengths (where 0 is nothing was found)
     unique_lengths = np.zeros(num_kmers, dtype=np.uint32)
@@ -367,7 +414,7 @@ def linear_search(index_filename,
         verbose_print(verbose, "{} unique {}-mers found".format(
             np.count_nonzero(unique_lengths == kmer_length), kmer_length))
 
-    return unique_lengths.astype(np.uint8)
+    return unique_lengths.astype(np.uint8), ambiguous_positions_skipped
 
 
 def main(args):
