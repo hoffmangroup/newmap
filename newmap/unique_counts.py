@@ -42,12 +42,16 @@ def write_unique_counts(fasta_filename: Path,
         # form a kmer of at least the maximum length
         requested_sequence_length = kmer_batch_size + lookahead_length
 
-        # Keep track of ambigious positions in the sequence for statistics
+        # Keep of summary statistics
         total_ambiguous_positions = 0
         total_unique_lengths_count = 0
         total_no_unique_lengths_count = 0
+        # Useful to the real upper and lower bounds for a sequence
+        max_length_found = 0
+        min_length_found = 0
 
         current_sequence_id = b''
+
         # For each sequence buffer from the fasta file
         for sequence_segment in sequence_segments(fasta_file,
                                                   requested_sequence_length,
@@ -64,7 +68,9 @@ def write_unique_counts(fasta_filename: Path,
                 print_summary_statisitcs(verbose,
                                          total_unique_lengths_count,
                                          total_ambiguous_positions,
-                                         total_no_unique_lengths_count)
+                                         total_no_unique_lengths_count,
+                                         max_length_found,
+                                         min_length_found)
 
                 verbose_print(verbose,
                               "Writing minimum unique lengths for sequence "
@@ -107,6 +113,11 @@ def write_unique_counts(fasta_filename: Path,
             total_no_unique_lengths_count += (num_kmers -
                 unique_lengths_count - ambiguous_count)
 
+            max_length_found = max(max_length_found,
+                                   segment_unique_counts.max())
+            min_length_found = min(min_length_found,
+                                   segment_unique_counts.min())
+
             # Append the unique counts to a unique count file per sequence
             with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
               sequence_segment.id.decode()), "ab") as unique_count_file:
@@ -115,13 +126,17 @@ def write_unique_counts(fasta_filename: Path,
         print_summary_statisitcs(verbose,
                                  total_unique_lengths_count,
                                  total_ambiguous_positions,
-                                 total_no_unique_lengths_count)
+                                 total_no_unique_lengths_count,
+                                 max_length_found,
+                                 min_length_found)
 
 
 def print_summary_statisitcs(verbose,
                              total_unique_lengths_count,
                              total_ambiguous_positions,
-                             total_no_unique_lengths_count):
+                             total_no_unique_lengths_count,
+                             max_length_found,
+                             min_length_found):
     if (verbose and
             total_unique_lengths_count):
         verbose_print(verbose,
@@ -132,6 +147,10 @@ def print_summary_statisitcs(verbose,
         verbose_print(verbose,
                       f"{total_no_unique_lengths_count} positions with no "
                       "unique length found")
+        verbose_print(verbose,
+                      f"{max_length_found}-mer maximum unique length found")
+        verbose_print(verbose,
+                      f"{min_length_found}-mer minimum unique length found")
 
 
 def get_kmer_counts(index_filename: Path,
