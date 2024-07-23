@@ -8,7 +8,7 @@ DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO = 8
 DEFAULT_KMER_LENGTH_IN_SEED_TABLE = 12
 
 # Defaults for minimum kmer length counting
-DEFAULT_KMER_BATCH_SIZE = 100000
+DEFAULT_KMER_BATCH_SIZE = 1000000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_MINIMUM_KMER_LENGTH = 20
 DEFAULT_MAXIMUM_KMER_LENGTH = 200
@@ -94,6 +94,7 @@ def parse_subcommands():
              "Use to control memory usage. "
              "Default is {}" .format(DEFAULT_KMER_BATCH_SIZE))
 
+    # TODO: Make required positional argument
     unique_length_parser.add_argument(
         "--kmer-lengths", "-k",
         help="Specify k-mer lengths to find unique kmers. "

@@ -38,7 +38,7 @@ This will create a `chr1.unique.uint8` file in the current directory.
 ### Convert the unique lengths to mappability output files
 For k-mer lengths of 24:
 ```bash
-newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed
+newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed chr1.unique.uint8
 ```
 The resulting BED file will be the single read mappbility, and the WIG file will be the multi-read mappability.
 
