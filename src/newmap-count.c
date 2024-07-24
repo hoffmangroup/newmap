@@ -68,23 +68,6 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
                 "All elements of the kmer list must be byte strings");
             return NULL;
         }
-
-
-        // // Ensure all elements are byte strings to avoid seg faults
-        // if (!PyBytes_Check(kmerBytes)) {
-        //     PyErr_SetString(PyExc_TypeError,
-        //             "All elements of the kmer list must be byte strings");
-        //     return NULL;
-        // }
-        // //TODO: Ensure all byte strings have non-zero length
-        //
-        // if(PyBytes_Size(kmerBytes) == 0){
-        // }
-        //
-        // searchList->kmerSearchData[i].kmerLength = PyBytes_Size(kmerBytes);
-        // // NB: The kmer strings are never deallocated via freeing the kmer
-        // // search list, so we can use as-is
-        // searchList->kmerSearchData[i].kmerString = PyBytes_AsString(kmerBytes);
     }
 
     awFmParallelSearchCount(index, searchList, numThreads);
