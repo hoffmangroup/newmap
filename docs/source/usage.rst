@@ -60,7 +60,7 @@ Find the minimum unique k-mer lengths for a chromosome (chr1.fna.gz)
 --------------------------------------------------------------------
 .. code-block:: console
 
-    $ newmap unique-lengths --kmer-batch-size 20000000 -k 20:200 --thread-count 4 index.awfmi chr1.fna.gz
+    $ newmap unique-lengths --kmer-batch-size 20000000 --thread-count 4 20:200 index.awfmi chr1.fna.gz
 
 This will create a ``.unique`` (e.g. ``chr1.unique.uint8``) binary file
 containing integers of the minimum unique k-mer length found in the lengths

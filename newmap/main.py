@@ -70,12 +70,19 @@ def parse_subcommands():
     # Create a subparser for the "unique-lengths" command
     unique_length_parser = subparsers.add_parser(
                             "unique-lengths",
-                            description="Creates a binary file with the unique "
-                                        "minimum k-mer length each sequence "
-                                        "position from the range of k-mer "
-                                        "lengths given")
+                            description="Creates a binary file with the "
+                                        "unique minimum k-mer length each "
+                                        "sequence position from the range of "
+                                        "k-mer lengths given")
 
     unique_length_parser.set_defaults(func=unique_counts.main)
+
+    unique_length_parser.add_argument(
+        "kmer_lengths",
+        help="Specify k-mer lengths to find unique kmers. "
+             "Use a comma seperated list of increasing lengths "
+             "or a full inclusive set of lengths seperated by a colon. "
+             "Example: 20,24,30 or 20-30.")
 
     unique_length_parser.add_argument(
         "index_file",
@@ -93,14 +100,6 @@ def parse_subcommands():
              "given fasta file. "
              "Use to control memory usage. "
              "Default is {}" .format(DEFAULT_KMER_BATCH_SIZE))
-
-    # TODO: Make required positional argument
-    unique_length_parser.add_argument(
-        "--kmer-lengths", "-k",
-        help="Specify k-mer lengths to find unique kmers. "
-             "Use a comma seperated list of increasing lengths "
-             "or a full inclusive set of lengths seperated by a colon. "
-             "Example: 20,24,30 or 20-30.")
 
     unique_length_parser.add_argument(
         "--thread-count", "-t",
@@ -138,13 +137,13 @@ def parse_subcommands():
     generate_mappability_parser.add_argument(
         "--single-read-bed-file", "-s",
         help="Filename for single-read mappability BED file output. Use '-' "
-            "for standard output.")
+             "for standard output.")
 
     # Add (non-positional) arguments for multi-read wiggle file output
     generate_mappability_parser.add_argument(
         "--multi-read-wig-file", "-m",
-        help="Filename for multi-read mappability WIG file output. Use '-' for "
-             "standard output.")
+        help="Filename for multi-read mappability WIG file output. Use '-' "
+             "for standard output.")
 
     generate_mappability_parser.add_argument(
         "--verbose",

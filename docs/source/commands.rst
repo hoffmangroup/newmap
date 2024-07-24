@@ -58,8 +58,6 @@ to be unique at each position from a given range of k-mer lengths. See the
 
 Options
 -------
-
-- `kmer-lengths`: The range of k-mer lengths to search for unique sequences. Required.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
@@ -68,7 +66,8 @@ Options
 
 Positional Arguments
 --------------------
-- `index-file`: The name of the index file to use for searching for unique sequences. Required.
+- `kmer-lengths`: The range of k-mer lengths to search for unique sequences.
+- `index-file`: The name of the index file to use for searching for unique sequences.
 - `fasta-file`: The name of the fasta file containing sequence(s) where each
   sequence ID will have a ``unique`` file generated. Must be equal to or a
   subset of the sequence used to generate the index used for ``index-file``.
