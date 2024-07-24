@@ -6,7 +6,7 @@ import numpy.typing as npt
 
 from newmap._c_newmap_count_kmers import count_kmers
 from newmap.util import optional_gzip_open, verbose_print
-from newmap.fasta import sequence_segments
+from newmap.fasta import SequenceSegment, sequence_segments
 
 KMER_RANGE_SEPARATOR = ":"
 
@@ -131,12 +131,12 @@ def write_unique_counts(fasta_filename: Path,
                                  min_length_found)
 
 
-def print_summary_statisitcs(verbose,
-                             total_unique_lengths_count,
-                             total_ambiguous_positions,
-                             total_no_unique_lengths_count,
-                             max_length_found,
-                             min_length_found):
+def print_summary_statisitcs(verbose: bool,
+                             total_unique_lengths_count: int,
+                             total_ambiguous_positions: int,
+                             total_no_unique_lengths_count: int,
+                             max_length_found: int,
+                             min_length_found: int):
     if (verbose and
             total_unique_lengths_count):
         verbose_print(verbose,
@@ -173,16 +173,28 @@ def get_kmer_counts(index_filename: Path,
                    for kmer in kmers],
                   num_threads), dtype=np.uint32)
 
+    # If any element in the count list is 0
+    if np.any(count_list == 0):
+        # There is very likely a mismatch between sequence and the index
+        # There is also a chance there is a bug in the index
+
+        # NB: Get first element of tuple, then first element in numpy array
+        kmer_index = (count_list == 0).nonzero()[0][0]
+        problem_kmer = kmers[kmer_index].decode("utf-8")
+        raise RuntimeError(f"The following generated k-mer was not found in "
+                           f"the index:\n{problem_kmer}\n"
+                           f"Possibly a mismatch between the sequence and the "
+                           f"index.")
+
     return count_list
 
 
-# TODO: Add types
-def binary_search(index_filename,
-                  sequence_segment,
-                  kmer_lengths,
-                  num_kmers,
-                  num_threads,
-                  verbose) -> tuple[npt.NDArray[np.uint8], int]:
+def binary_search(index_filename: Path,
+                  sequence_segment: SequenceSegment,
+                  kmer_lengths: list[int],
+                  num_kmers: int,
+                  num_threads: int,
+                  verbose: bool) -> tuple[npt.NDArray[np.uint8], int]:
 
     max_kmer_length = max(kmer_lengths)
     min_kmer_length = min(kmer_lengths)
@@ -289,9 +301,6 @@ def binary_search(index_filename,
                                      working_kmers,
                                      num_threads)
 
-        # TODO: Assert for 0 counts since there must be a mismatch between
-        # sequence and index
-
         # Assert that the number of indices to count and the number of counts
         # are equal
         assert counted_positions.size == count_list.size, \
@@ -351,12 +360,12 @@ def binary_search(index_filename,
     return unique_lengths.astype(np.uint8), ambiguous_positions_skipped
 
 
-def linear_search(index_filename,
-                  sequence_segment,
-                  kmer_lengths,
-                  num_kmers,
-                  num_threads,
-                  verbose) -> npt.NDArray[np.uint8]:
+def linear_search(index_filename: Path,
+                  sequence_segment: SequenceSegment,
+                  kmer_lengths: list[int],
+                  num_kmers: int,
+                  num_threads: int,
+                  verbose: bool) -> npt.NDArray[np.uint8]:
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
