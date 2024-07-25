@@ -1,5 +1,6 @@
 from math import ceil, log2
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,7 +12,7 @@ from newmap.fasta import SequenceSegment, sequence_segments
 KMER_RANGE_SEPARATOR = ":"
 
 COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
-UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.uint8"
+UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.{}"
 
 
 def write_unique_counts(fasta_filename: Path,
@@ -22,10 +23,23 @@ def write_unique_counts(fasta_filename: Path,
                         use_binary_search=False,
                         verbose: bool = False):
 
+    max_kmer_length = max(kmer_lengths)
+    min_kmer_length = min(kmer_lengths)
+
+    # Use the maximum k-mer length to determine the data type used to store
+    # lengths
+    if max_kmer_length <= np.iinfo(np.uint8).max:
+        data_type = np.uint8
+        unique_count_suffix = "uint8"
+    elif max_kmer_length <= np.iinfo(np.uint16).max:
+        data_type = np.uint16
+        unique_count_suffix = "uint16"
+    else:
+        data_type = np.uint32
+        unique_count_suffix = "uint32"
+
     if (verbose and
             use_binary_search):
-        max_kmer_length = max(kmer_lengths)
-        min_kmer_length = min(kmer_lengths)
         verbose_print(verbose, "Max {} iterations over range {}-{}".format(
                       ceil(log2(max_kmer_length - min_kmer_length) + 1),
                       min_kmer_length, max_kmer_length))
@@ -47,8 +61,8 @@ def write_unique_counts(fasta_filename: Path,
         total_unique_lengths_count = 0
         total_no_unique_lengths_count = 0
         # Useful to the real upper and lower bounds for a sequence
-        max_length_found = 0
-        min_length_found = 0
+        max_length_found = min_kmer_length
+        min_length_found = max_kmer_length
 
         current_sequence_id = b''
 
@@ -61,7 +75,8 @@ def write_unique_counts(fasta_filename: Path,
             if current_sequence_id != sequence_segment.id:
                 # Truncate any existing file for the new sequence
                 open(UNIQUE_COUNT_FILENAME_FORMAT.format(
-                     sequence_segment.id.decode()), "wb").close()
+                     sequence_segment.id.decode(),
+                     unique_count_suffix), "wb").close()
                 # Update the current working sequence id
                 current_sequence_id = sequence_segment.id
 
@@ -96,6 +111,7 @@ def write_unique_counts(fasta_filename: Path,
                                   kmer_lengths,
                                   num_kmers,
                                   num_threads,
+                                  data_type,
                                   verbose)
             else:
                 segment_unique_counts, ambiguous_count = \
@@ -104,6 +120,7 @@ def write_unique_counts(fasta_filename: Path,
                                   kmer_lengths,
                                   num_kmers,
                                   num_threads,
+                                  data_type,
                                   verbose)
 
             # Update summary statistics
@@ -115,12 +132,14 @@ def write_unique_counts(fasta_filename: Path,
 
             max_length_found = max(max_length_found,
                                    segment_unique_counts.max())
-            min_length_found = min(min_length_found,
-                                   segment_unique_counts.min())
+            min_length_found = min(
+                min_length_found,
+                segment_unique_counts[segment_unique_counts.nonzero()].min())
 
             # Append the unique counts to a unique count file per sequence
             with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
-              sequence_segment.id.decode()), "ab") as unique_count_file:
+              sequence_segment.id.decode(),
+              unique_count_suffix), "ab") as unique_count_file:
                 segment_unique_counts.tofile(unique_count_file)
 
         print_summary_statisitcs(verbose,
@@ -179,10 +198,10 @@ def get_kmer_counts(index_filename: Path,
         # There is also a chance there is a bug in the index
 
         # NB: Get first element of tuple, then first element in numpy array
-        kmer_index = (count_list == 0).nonzero()[0][0]
-        problem_kmer = kmers[kmer_index].decode("utf-8")
+        first_kmer_index = (count_list == 0).nonzero()[0][0]
+        first_problem_kmer = kmers[first_kmer_index].decode("utf-8")
         raise RuntimeError(f"The following generated k-mer was not found in "
-                           f"the index:\n{problem_kmer}\n"
+                           f"the index:\n{first_problem_kmer}\n"
                            f"Possibly a mismatch between the sequence and the "
                            f"index.")
 
@@ -194,7 +213,8 @@ def binary_search(index_filename: Path,
                   kmer_lengths: list[int],
                   num_kmers: int,
                   num_threads: int,
-                  verbose: bool) -> tuple[npt.NDArray[np.uint8], int]:
+                  data_type: Union[np.uint8, np.uint16, np.uint32],
+                  verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
 
     max_kmer_length = max(kmer_lengths)
     min_kmer_length = min(kmer_lengths)
@@ -323,7 +343,7 @@ def binary_search(index_filename: Path,
         # Update the query length and bounds for the next iteration
 
         # Lower the upper bounds of our search range on positions where
-        # We need to decrease our k-mer length (i.e. counts == 1)
+        # we need to decrease our k-mer length (i.e. counts == 1)
         # Set the new upper (inclusive) bound to the current query length - 1
         upper_length_bound[counted_positions] = np.where(
             count_list == 1,
@@ -331,7 +351,7 @@ def binary_search(index_filename: Path,
             upper_length_bound[counted_positions])
 
         # Raise the lower bounds of our search range on positions where
-        # We need to increase our k-mer length (i.e. counts > 1)
+        # we need to increase our k-mer length (i.e. counts > 1)
         # Set the new lower (inclusive) bound to the current query length + 1
         lower_length_bound[counted_positions] = np.where(
             count_list > 1,
@@ -356,8 +376,8 @@ def binary_search(index_filename: Path,
     verbose_print(verbose,
                   f"Finished searching in {iteration_count-1} iterations")
 
-    # TODO: Parameterize the type or change depending on lengths found
-    return unique_lengths.astype(np.uint8), ambiguous_positions_skipped
+    # NB: Assumes data_type is correctly checked for safe casting from caller
+    return unique_lengths.astype(data_type), ambiguous_positions_skipped
 
 
 def linear_search(index_filename: Path,
@@ -365,7 +385,8 @@ def linear_search(index_filename: Path,
                   kmer_lengths: list[int],
                   num_kmers: int,
                   num_threads: int,
-                  verbose: bool) -> npt.NDArray[np.uint8]:
+                  data_type: Union[np.uint8, np.uint16, np.uint32],
+                  verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
@@ -442,7 +463,7 @@ def linear_search(index_filename: Path,
         verbose_print(verbose, "{} unique {}-mers found".format(
             np.count_nonzero(unique_lengths == kmer_length), kmer_length))
 
-    return unique_lengths.astype(np.uint8), ambiguous_positions_skipped
+    return unique_lengths.astype(data_type), ambiguous_positions_skipped
 
 
 def main(args):

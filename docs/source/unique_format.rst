@@ -19,11 +19,11 @@ The suffix of the filename specifies the type of the underyling binary data.
 The suffix ``uint8`` specifies that each minimum length is represented with a
 single unsigned 8 bit integer (1 byte each), and ``uint16`` likewise has each
 length represented by unsigned 16 bit integer (2 bytes each). No other data is
-stored in the file. The data type is chosen based on the maximum unique minimum
-length found. For example, in a search range from 20 to 300, if the maximum
-unique minimum length found is found to be less than 256 (which is the maximum
-value that can be represented with an unsigned byte) then the ``uint8`` format
-will be used.
+stored in the file. The data type is chosen based on the maximum length
+specified in range specified to :ref:`unique-lengths`. For example, in a search
+range from 20 to 255, the maximum unique minimum length is less than 256 (which
+is the maximum value that can be represented with an unsigned byte), therefore
+the ``uint8`` format will be used.
 
 -----
 Usage

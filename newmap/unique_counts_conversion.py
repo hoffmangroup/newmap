@@ -1,6 +1,6 @@
 from pathlib import Path
 import sys
-from typing import TextIO
+from typing import TextIO, Union
 
 from newmap.util import verbose_print
 
@@ -20,11 +20,12 @@ STDOUT_FILENAME = "-"
 
 def create_multiread_mappability_from_unique_file(
      unique_lengths_filename: Path,
-     kmer_length: int):
+     kmer_length: int,
+     data_type: Union[np.uint8, np.uint16, np.uint32]):
 
     # Read the unique k-mer lengths from the unique length file
     unique_kmer_lengths = np.fromfile(str(unique_lengths_filename),
-                                      dtype=np.uint8)
+                                      dtype=data_type)
     # Create a boolean array of all values that are not 0 and less than or
     # equal to the k-mer length
     unique_mappability = np.logical_and(unique_kmer_lengths <= kmer_length,
@@ -32,13 +33,13 @@ def create_multiread_mappability_from_unique_file(
 
     # Create a zero-array of length of the unique length chromosome file
     multiread_mappability = np.zeros(len(unique_mappability), dtype=np.float64)
-    # For each position boolean unique mappability array
-    for i, is_unique in enumerate(unique_mappability):
-        # If the k-mer is unique for this length
-        if is_unique:
-            # Add 1 to the multiread mappability array for this position
-            # and all positions up to the k-mer length
-            multiread_mappability[i:i + kmer_length] += 1.0
+
+    # For every unique k-mer for this length
+    unique_mappability_indicies = unique_mappability.nonzero()[0]
+    for i in unique_mappability_indicies:
+        # Add 1 to the multiread mappability array for this position
+        # and all positions up to the k-mer length
+        multiread_mappability[i:i + kmer_length] += 1.0
 
     multiread_mappability /= kmer_length
     return multiread_mappability
@@ -119,6 +120,19 @@ def main(args):
     chr_name = \
         file_basename[:file_basename.find(CHROMOSOME_FILENAME_DELIMITER)]
 
+    # Get the data type from the unique length filename suffix
+    data_type_string = unique_count_filename.suffix
+
+    if data_type_string == ".uint8":
+        data_type = np.uint8
+    elif data_type_string == ".uint16":
+        data_type = np.uint16
+    elif data_type_string == ".uint32":
+        data_type = np.uint32
+    else:
+        raise ValueError(f"Unknown extension on unique length file: "
+                         f"\"{data_type_string}\"")
+
     # NB: The single-read mappability is defined for the entire sequence where
     # a uniquely mappable k-mer would cover. So if a k-mer is uniquely mappable
     # starting at position i, then the single read mappability would be 1 for
@@ -127,12 +141,13 @@ def main(args):
     # the single-read, so any non-zero value would be considered single-read
     # mappable
     verbose_print(verbose,
-                  "Calculating mappability regions from minimum unique k-mer "
-                  "lengths in file: {}".format(unique_count_filename))
+                  f"Calculating mappability regions from minimum unique k-mer "
+                  f"lengths in file: {unique_count_filename}")
 
     multi_read_mappability = create_multiread_mappability_from_unique_file(
                              unique_count_filename,
-                             kmer_length)
+                             kmer_length,
+                             data_type)
 
     verbose_print(verbose, "Chromosome size:")
     verbose_print(verbose,
