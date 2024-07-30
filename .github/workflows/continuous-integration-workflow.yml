@@ -22,6 +22,10 @@ jobs:
       - name: Set ownership
         run: |
           chown -R $(id -u):$(id -g) $PWD
+      # Do not use ubuntu image for python setup
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
       - name: Install test dependencies
         run: |
           python3 -m pip install flake8 mypy build

@@ -19,6 +19,9 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "Programming Language :: Python :: 3",
 ]
+dependencies = [
+  "numpy",
+]
 description = "Newmap: tools for genome and methylome mappability"
 dynamic = ["version"]
 name = "newmap"
