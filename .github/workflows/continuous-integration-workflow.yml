@@ -40,18 +40,14 @@ jobs:
           ./build_libraries.sh
       - name: Build repository
         run: |
-          python3 -m build
+          python3 -m build --wheel
       - name: Install
         run: |
           python3 -m pip install -v .
-          pip list
+          python3 -m pip list
       - name: Run tests
         run: |
           python3 -m unittest
-      - uses: actions/upload-artifact@v3
-        with:
-          name: newmap-source
-          path: dist/newmap*.tar.gz
 
   build-wheel:
     runs-on: ubuntu-latest
