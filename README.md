@@ -31,7 +31,7 @@ By default this creates an `index.awfmi` file in the current directory.
 ### Find the minimum unique k-mer lengths for a chromosome
 For chromosome 1, and lengths ranging from 20 to 200:
 ```bash
-newmap unique-lengths --kmer-batch-size 20000000 -k 20:200 --thread-count 4 index.awfmi chr1.fna.gz
+newmap unique-lengths --kmer-batch-size 20000000 --thread-count 4 20:200 index.awfmi chr1.fna.gz
 ```
 This will create a `chr1.unique.uint8` file in the current directory.
 
