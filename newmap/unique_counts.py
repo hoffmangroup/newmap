@@ -111,7 +111,7 @@ def write_unique_counts(fasta_filename: Path,
                                   kmer_lengths,
                                   num_kmers,
                                   num_threads,
-                                  data_type,
+                                  data_type,  # type: ignore
                                   verbose)
             else:
                 segment_unique_counts, ambiguous_count = \
@@ -120,7 +120,7 @@ def write_unique_counts(fasta_filename: Path,
                                   kmer_lengths,
                                   num_kmers,
                                   num_threads,
-                                  data_type,
+                                  data_type,  # type: ignore
                                   verbose)
 
             # Update summary statistics
@@ -128,7 +128,8 @@ def write_unique_counts(fasta_filename: Path,
             total_ambiguous_positions += ambiguous_count
             total_unique_lengths_count += unique_lengths_count
             total_no_unique_lengths_count += (num_kmers -
-                unique_lengths_count - ambiguous_count)
+                                              unique_lengths_count -
+                                              ambiguous_count)
 
             max_length_found = max(max_length_found,
                                    segment_unique_counts.max())
@@ -282,12 +283,11 @@ def binary_search(index_filename: Path,
     upper_bound_change_count = np.count_nonzero(
         upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
 
-    if (verbose and
-       upper_bound_change_count):
+    if (upper_bound_change_count):
         verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
                                "ranges truncated due to ambiguity")
-    if (verbose and
-       short_kmers_discarded_count):
+
+    if (short_kmers_discarded_count):
         verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
                       "than the minimum length discarded due to ambiguity")
 
@@ -332,7 +332,7 @@ def binary_search(index_filename: Path,
             (count_list == 1) &
             # And if there is no current unique length recorded
             ((unique_lengths[counted_positions] == 0) |
-            # Or there is a smaller length found than the current unique length
+             # Or there is a smaller length found than the current min length
              (current_length_query[counted_positions] <
               unique_lengths[counted_positions])),
             # Record the minimum kmer length found if it less than the current

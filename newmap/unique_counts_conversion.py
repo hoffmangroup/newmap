@@ -13,7 +13,8 @@ CHROMOSOME_FILENAME_DELIMITER = ".unique"
 
 # chr_name, start, end, k-mer length, value
 BED_FILE_LINE_FORMAT = "{}\t{}\t{}\tk{}\t{}\t.\n"
-WIG_FIXED_STEP_DECLARATION_FORMAT = "fixedStep chrom={} start={} step=1 span=1\n"
+WIG_FIXED_STEP_DECLARATION_FORMAT = \
+    "fixedStep chrom={} start={} step=1 span=1\n"
 
 STDOUT_FILENAME = "-"
 
@@ -53,7 +54,7 @@ def write_single_read_bed(bed_file: TextIO,
     single_read_mappability = np.where(multi_read_mappability > 0.0, 1, 0)
 
     current_start = 0  # NB: Always 0-based, always start of current interval
-    current_position = 0 # NB: Always 0-based, current position in iteration
+    current_position = 0  # NB: Always 0-based, current position in iteration
     current_value = single_read_mappability[current_start]
 
     # For every value in the single-read mappability array
@@ -105,7 +106,7 @@ def main(args):
 
     # Error if both single-read and multi-read output files are standard output
     if (single_read_bed_filename == STDOUT_FILENAME and
-        multi_read_wig_filename == STDOUT_FILENAME):
+       multi_read_wig_filename == STDOUT_FILENAME):
         raise ValueError("Cannot output both single-read and multi-read files "
                          "to standard output")
     # Error if neither single-read nor multi-read output files are specified
@@ -147,7 +148,7 @@ def main(args):
     multi_read_mappability = create_multiread_mappability_from_unique_file(
                              unique_count_filename,
                              kmer_length,
-                             data_type)
+                             data_type)  # type: ignore
 
     verbose_print(verbose, "Chromosome size:")
     verbose_print(verbose,
