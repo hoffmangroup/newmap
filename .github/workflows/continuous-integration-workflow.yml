@@ -24,7 +24,7 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
       - name: Install test dependencies
         run: |
-          python3 -m pip install flake8 mypy
+          python3 -m pip install flake8 mypy build
       - name: Lint with flake8
         run: |
           flake8 . --exclude 'docs/source/conf.py' --count --statistics
