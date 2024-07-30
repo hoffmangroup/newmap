@@ -56,8 +56,8 @@ def sequence_segments(
                                       bytes(working_sequence_buffer))
 
             # Get the new reference sequence name
-            current_sequence_id = \
-                fasta_line.split()[0][1:]  # NB: remove leading '>'
+            # NB: remove leading '>'
+            current_sequence_id = fasta_line.split()[0][1:]  # type: ignore
             # Reset the working sequence buffer
             working_sequence_buffer = bytearray()
 
