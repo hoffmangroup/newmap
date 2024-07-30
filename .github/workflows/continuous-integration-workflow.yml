@@ -1,0 +1,68 @@
+name: Build and Test
+
+# Workflow is triggered only on push to the master branch or a pull request to
+# the master branch
+
+on:
+  push:
+      branches: [ master ]
+  pull_request:
+      branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      # Fix ownership of the checkout dir
+      - name: Set ownership
+        run: |
+          chown -R $(id -u):$(id -g) $PWD
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install flake8 mypy
+      - name: Lint with flake8
+        run: |
+          flake8 . --exclude 'docs/source/conf.py' --count --statistics
+      - name: Type check with mypy
+        run: |
+          mypy newmap test
+      - name: Build repository
+        run: |
+          python3 -m build
+      - name: Install
+        run: |
+          python3 -m pip install -v .
+          pip list
+      - name: Run tests
+        run: |
+          python3 -m unittest
+      - uses: actions/upload-artifact@v3
+        with:
+          name: newmap-source
+          path: dist/newmap*.tar.gz
+
+  build-wheel:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install cibuildwheel
+      run: |
+        python -m pip install --upgrade cibuildwheel
+    - name: Build wheel(s)
+      run: |
+        python -m cibuildwheel --output-dir wheelhouse
+    - uses: actions/upload-artifact@v3
+      with:
+        name: newmap-build
+        path: wheelhouse/*

@@ -6,8 +6,8 @@ import unittest
 from tests.util import TEST_DATA_PATH
 
 from newmap._c_newmap_generate_index import generate_fm_index
-from newmap.generate_index import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                                   DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+from newmap.main import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
+                         DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
 
 
 class TestGenerateIndex(unittest.TestCase):
