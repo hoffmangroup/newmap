@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from tests.util import TEST_DATA_PATH
+from util import TEST_DATA_PATH
 
 from newmap._c_newmap_generate_index import generate_fm_index
 from newmap.main import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,

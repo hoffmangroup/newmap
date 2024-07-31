@@ -1,6 +1,6 @@
 import unittest
 
-from tests.util import TEST_DATA_PATH
+from util import TEST_DATA_PATH
 
 from newmap._c_newmap_count_kmers import count_kmers
 

@@ -1,10 +1,8 @@
 from io import BytesIO
-from pathlib import Path
 import unittest
 
+from util import TEST_DATA_PATH
 from newmap.fasta import sequence_segments
-
-TEST_DATA_PATH = Path('tests/data')
 
 
 class TestSequenceBufferIterator(unittest.TestCase):
