@@ -108,8 +108,8 @@ def write_unique_counts(fasta_filename: Path,
                 segment_unique_counts, ambiguous_count = \
                     binary_search(index_filename,
                                   sequence_segment,
-                                  kmer_lengths,
-                                  num_kmers,
+                                  min_kmer_length,
+                                  max_kmer_length,
                                   num_threads,
                                   data_type,  # type: ignore
                                   verbose)
@@ -151,74 +151,16 @@ def write_unique_counts(fasta_filename: Path,
                                  min_length_found)
 
 
-def print_summary_statisitcs(verbose: bool,
-                             total_unique_lengths_count: int,
-                             total_ambiguous_positions: int,
-                             total_no_unique_lengths_count: int,
-                             max_length_found: int,
-                             min_length_found: int):
-    if (verbose and
-            total_unique_lengths_count):
-        verbose_print(verbose,
-                      f"{total_unique_lengths_count} unique lengths found")
-        verbose_print(verbose,
-                      f"{total_ambiguous_positions} positions skipped due to "
-                      "ambiguity")
-        verbose_print(verbose,
-                      f"{total_no_unique_lengths_count} positions with no "
-                      "unique length found")
-        verbose_print(verbose,
-                      f"{max_length_found}-mer maximum unique length found")
-        verbose_print(verbose,
-                      f"{min_length_found}-mer minimum unique length found")
-
-
-def get_kmer_counts(index_filename: Path,
-                    kmers: list[bytes],
-                    num_threads: int) -> npt.NDArray[np.uint32]:
-
-    # Count the occurances of kmers on the forward strand
-    count_list = np.array(count_kmers(
-                            str(index_filename),
-                            kmers,
-                            num_threads),
-                          dtype=np.uint32)
-
-    # TODO: Add no reverse complement option to skip this to
-    # support bisulfite treated kmer counting
-    # TODO: Add option for a complement table
-    count_list += np.array(
-      count_kmers(str(index_filename),
-                  [kmer.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
-                   for kmer in kmers],
-                  num_threads), dtype=np.uint32)
-
-    # If any element in the count list is 0
-    if np.any(count_list == 0):
-        # There is very likely a mismatch between sequence and the index
-        # There is also a chance there is a bug in the index
-
-        # NB: Get first element of tuple, then first element in numpy array
-        first_kmer_index = (count_list == 0).nonzero()[0][0]
-        first_problem_kmer = kmers[first_kmer_index].decode("utf-8")
-        raise RuntimeError(f"The following generated k-mer was not found in "
-                           f"the index:\n{first_problem_kmer}\n"
-                           f"Possibly a mismatch between the sequence and the "
-                           f"index.")
-
-    return count_list
-
-
 def binary_search(index_filename: Path,
                   sequence_segment: SequenceSegment,
-                  kmer_lengths: list[int],
-                  num_kmers: int,
+                  min_kmer_length: int,
+                  max_kmer_length: int,
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
 
-    max_kmer_length = max(kmer_lengths)
-    min_kmer_length = min(kmer_lengths)
+    num_kmers = get_num_kmers(sequence_segment, max_kmer_length)
+
     # NB: Floor division for midpoint
     # NB: Avoid an overflow error by dividing first before sum
     starting_kmer_length = (max_kmer_length // 2) + (min_kmer_length // 2)
@@ -464,6 +406,81 @@ def linear_search(index_filename: Path,
             np.count_nonzero(unique_lengths == kmer_length), kmer_length))
 
     return unique_lengths.astype(data_type), ambiguous_positions_skipped
+
+
+def get_kmer_counts(index_filename: Path,
+                    kmers: list[bytes],
+                    num_threads: int) -> npt.NDArray[np.uint32]:
+
+    # Count the occurances of kmers on the forward strand
+    count_list = np.array(count_kmers(
+                            str(index_filename),
+                            kmers,
+                            num_threads),
+                          dtype=np.uint32)
+
+    # TODO: Add no reverse complement option to skip this to
+    # support bisulfite treated kmer counting
+    # TODO: Add option for a complement table
+    count_list += np.array(
+      count_kmers(str(index_filename),
+                  [kmer.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+                   for kmer in kmers],
+                  num_threads), dtype=np.uint32)
+
+    # If any element in the count list is 0
+    if np.any(count_list == 0):
+        # There is very likely a mismatch between sequence and the index
+        # There is also a chance there is a bug in the index
+
+        # NB: Get first element of tuple, then first element in numpy array
+        first_kmer_index = (count_list == 0).nonzero()[0][0]
+        first_problem_kmer = kmers[first_kmer_index].decode("utf-8")
+        raise RuntimeError(f"The following generated k-mer was not found in "
+                           f"the index:\n{first_problem_kmer}\n"
+                           f"Possibly a mismatch between the sequence and the "
+                           f"index.")
+
+    return count_list
+
+
+def get_num_kmers(sequence_segment: SequenceSegment,
+                  max_kmer_length: int):
+    """Returns the maximum number of kmers from a SequenceSegment"""
+    sequence_length = len(sequence_segment.data)
+    # If this is the last sequence segment
+    if sequence_segment.epilogue:
+        # The number of kmers is equal to the entire length of the
+        # sequence segment
+        return sequence_length
+    # Otherwise
+    else:
+        # The number of kmers is equal to kmer batch size
+        # (or the sequence segment length minus the lookahead)
+        lookahead_length = max_kmer_length - 1
+        return sequence_length - lookahead_length
+
+
+def print_summary_statisitcs(verbose: bool,
+                             total_unique_lengths_count: int,
+                             total_ambiguous_positions: int,
+                             total_no_unique_lengths_count: int,
+                             max_length_found: int,
+                             min_length_found: int):
+    if (verbose and
+            total_unique_lengths_count):
+        verbose_print(verbose,
+                      f"{total_unique_lengths_count} unique lengths found")
+        verbose_print(verbose,
+                      f"{total_ambiguous_positions} positions skipped due to "
+                      "ambiguity")
+        verbose_print(verbose,
+                      f"{total_no_unique_lengths_count} positions with no "
+                      "unique length found")
+        verbose_print(verbose,
+                      f"{max_length_found}-mer maximum unique length found")
+        verbose_print(verbose,
+                      f"{min_length_found}-mer minimum unique length found")
 
 
 def main(args):
