@@ -167,26 +167,26 @@ def binary_search(index_filename: Path,
 
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
-    # NB: Iterating over bytes returns ints
-    finished_search = np.array([c == ord(b'N') for c in
-                                sequence_segment.data[:num_kmers]])
+    finished_search = np.frombuffer(sequence_segment.data,
+                                    dtype=np.uint8,
+                                    count=num_kmers) == ord(b'N')
 
+    # Print out the number of ambiguous positions skipped
     ambiguous_positions_skipped = finished_search.sum()
-    # TODO: Switch to f-strings
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
                   "positions")
 
     # Track current kmer query (for minimum) length
     current_length_query = np.full(num_kmers, starting_kmer_length,
-                                   dtype=np.uint32)
+                                   dtype=data_type)
 
     # Inclusive bounds for remaining possible lengths
-    lower_length_bound = np.full(num_kmers, min_kmer_length, dtype=np.uint32)
+    lower_length_bound = np.full(num_kmers, min_kmer_length, dtype=data_type)
 
     # The upper search length is bounded by the minimum of:
     # The maximum length in our search query range
     # Or the maximum length that does not overlap with an ambiguous base
-    upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=np.uint32)
+    upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=data_type)
     upper_bound_change_count = 0
     short_kmers_discarded_count = 0
 
@@ -212,8 +212,9 @@ def binary_search(index_filename: Path,
                 # Set the maximum length (to the index of the ambiguous base)
                 upper_length_bound[i] = maximum_non_ambiguous_length
                 # Recalculate the current query length (as a midpoint)
-                current_length_query[i] = np.floor_divide(
-                    upper_length_bound[i] + lower_length_bound[i], 2)
+                current_length_query[i] = np.floor(
+                    (upper_length_bound[i] / 2) +
+                    (lower_length_bound[i] / 2)).astype(data_type)
                 upper_bound_change_count += 1
             # Otherwise
             else:
@@ -234,7 +235,7 @@ def binary_search(index_filename: Path,
                       "than the minimum length discarded due to ambiguity")
 
     # List of minimum lengths (where 0 is nothing was found)
-    unique_lengths = np.zeros(num_kmers, dtype=np.uint32)
+    unique_lengths = np.zeros(num_kmers, dtype=data_type)
 
     iteration_count = 1
 
@@ -302,9 +303,10 @@ def binary_search(index_filename: Path,
 
         # Calculate the new query length as the midpoint between the updated
         # upper and lower bounds
-        current_length_query[counted_positions] = np.floor_divide(
-            upper_length_bound[counted_positions] +
-            lower_length_bound[counted_positions], 2)
+        # NB: Avoid overflow by dividing first before sum
+        current_length_query[counted_positions] = np.floor(
+            (upper_length_bound[counted_positions] / 2) +
+            (lower_length_bound[counted_positions] / 2)).astype(data_type)
 
         # If we have reduced our bounds to overlapping we have finished
         # searching on this position
@@ -318,8 +320,7 @@ def binary_search(index_filename: Path,
     verbose_print(verbose,
                   f"Finished searching in {iteration_count-1} iterations")
 
-    # NB: Assumes data_type is correctly checked for safe casting from caller
-    return unique_lengths.astype(data_type), ambiguous_positions_skipped
+    return unique_lengths, ambiguous_positions_skipped
 
 
 def linear_search(index_filename: Path,
