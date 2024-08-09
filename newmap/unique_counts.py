@@ -1,6 +1,6 @@
 from math import ceil, log2
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -187,41 +187,14 @@ def binary_search(index_filename: Path,
     # The maximum length in our search query range
     # Or the maximum length that does not overlap with an ambiguous base
     upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=data_type)
-    upper_bound_change_count = 0
-    short_kmers_discarded_count = 0
 
-    # NB: The following is effecitvely O(n^2) where the max k-mer length and
-    # sequence length are similar in size/magnitude
-    # There might be a better way based on finding the ambiguous bases in the
-    # sequence buffer, and then setting the max lengths of the previous
-    # positions based on their location up to the max k away
-
-    # For every non-ambiguous starting position
-    for i in np.nonzero(~finished_search)[0]:
-        # Get what would the maximum length kmer for this position
-        max_length_kmer = sequence_segment.data[i:i+max_kmer_length]
-        # Search for the first occurance of a base that is ambiguous
-        # NB: The index is 0-based, so the index is equal to the length
-        # that excludes its own position
-        # NB: This is very slow for large sequences
-        maximum_non_ambiguous_length = max_length_kmer.find(b'N')
-        # If we found an index where an ambiguous base is
-        if maximum_non_ambiguous_length != -1:
-            # If the found length is longer than the minimum kmer length
-            if maximum_non_ambiguous_length >= min_kmer_length:
-                # Set the maximum length (to the index of the ambiguous base)
-                upper_length_bound[i] = maximum_non_ambiguous_length
-                # Recalculate the current query length (as a midpoint)
-                current_length_query[i] = np.floor(
-                    (upper_length_bound[i] / 2) +
-                    (lower_length_bound[i] / 2)).astype(data_type)
-                upper_bound_change_count += 1
-            # Otherwise
-            else:
-                # Cannot find a length that would be smaller than the minimum
-                # Mark this position as finished
-                short_kmers_discarded_count += 1
-                finished_search[i] = True
+    upper_bound_change_count, short_kmers_discarded_count = update_upper_search_bound(upper_length_bound,
+                                  lower_length_bound,
+                                  current_length_query,
+                                  finished_search,
+                                  sequence_segment.data,
+                                  max_kmer_length,
+                                  min_kmer_length)
 
     upper_bound_change_count = np.count_nonzero(
         upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
@@ -259,7 +232,7 @@ def binary_search(index_filename: Path,
             kmer = sequence_segment.data[i:i+current_kmer_length]
             working_kmers.append(kmer)
 
-        # Get the occurances of the kmers on both strands
+        # Get the occurences of the kmers on both strands
         count_list = get_kmer_counts(index_filename,
                                      working_kmers,
                                      num_threads)
@@ -323,6 +296,57 @@ def binary_search(index_filename: Path,
     return unique_lengths, ambiguous_positions_skipped
 
 
+def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
+                              lower_length_bound_array: npt.NDArray[np.uint],
+                              current_length_query_array: npt.NDArray[np.uint],
+                              finished_search_array: npt.NDArray[np.bool_],
+                              sequence_data: bytes,
+                              max_kmer_length,
+                              min_kmer_length) -> Tuple[int, int]:
+    """Return the count of changed positions"""
+
+    # NB: The following is effecitvely O(n^2) where the max k-mer length and
+    # sequence length are similar in size/magnitude
+    # There might be a better way based on finding the ambiguous bases in the
+    # sequence buffer, and then setting the max lengths of the previous
+    # positions based on their location up to the max k away
+
+    upper_bound_change_count = 0
+    short_kmers_discarded_count = 0
+
+    data_type = current_length_query_array.dtype
+
+    # TODO: Fix this
+    # For every non-ambiguous starting position
+    for i in np.nonzero(~finished_search_array)[0]:
+        # Get what would the maximum length kmer for this position
+        max_length_kmer = sequence_data[i:i+max_kmer_length]
+        # Search for the first occurence of a base that is ambiguous
+        # NB: The index is 0-based, so the index is equal to the length
+        # that excludes its own position
+        # NB: This is very slow for large sequences
+        maximum_non_ambiguous_length = max_length_kmer.find(b'N')
+        # If we found an index where an ambiguous base is
+        if maximum_non_ambiguous_length != -1:
+            # If the found length is longer than the minimum kmer length
+            if maximum_non_ambiguous_length >= min_kmer_length:
+                # Set the maximum length (to the index of the ambiguous base)
+                upper_length_bound_array[i] = maximum_non_ambiguous_length
+                # Recalculate the current query length (as a midpoint)
+                current_length_query_array[i] = np.floor(
+                    (upper_length_bound_array[i] / 2) +
+                    (lower_length_bound_array[i] / 2)).astype(data_type)
+                upper_bound_change_count += 1
+            # Otherwise
+            else:
+                # Cannot find a length that would be smaller than the minimum
+                # Mark this position as finished
+                short_kmers_discarded_count += 1
+                finished_search_array[i] = True
+
+    return upper_bound_change_count, short_kmers_discarded_count
+
+
 def linear_search(index_filename: Path,
                   sequence_segment: SequenceSegment,
                   kmer_lengths: list[int],
@@ -377,7 +401,7 @@ def linear_search(index_filename: Path,
                           "{} {}-mers remaining to be counted"
                           .format(len(working_kmers), kmer_length))
 
-        # Count the occurances of the kmers on both strands
+        # Count the occurences of the kmers on both strands
         count_list = get_kmer_counts(index_filename,
                                      working_kmers,
                                      num_threads)
@@ -413,7 +437,7 @@ def get_kmer_counts(index_filename: Path,
                     kmers: list[bytes],
                     num_threads: int) -> npt.NDArray[np.uint32]:
 
-    # Count the occurances of kmers on the forward strand
+    # Count the occurences of kmers on the forward strand
     count_list = np.array(count_kmers(
                             str(index_filename),
                             kmers,
