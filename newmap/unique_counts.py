@@ -1,6 +1,6 @@
 from math import ceil, log2
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -205,7 +205,6 @@ def binary_search(index_filename: Path,
 
         verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
                                "ranges truncated due to ambiguity")
-
 
         verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
                       "than the minimum length discarded due to ambiguity")
