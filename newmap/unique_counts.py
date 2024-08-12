@@ -176,34 +176,37 @@ def binary_search(index_filename: Path,
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
                   "positions")
 
-    # Track current kmer query (for minimum) length
+    # Track current kmer query length
     current_length_query = np.full(num_kmers, starting_kmer_length,
                                    dtype=data_type)
 
-    # Inclusive bounds for remaining possible lengths
+    # Track minimum and maximum kmer lengths for each position
+    # NB: Inclusive bounds for search lengths
     lower_length_bound = np.full(num_kmers, min_kmer_length, dtype=data_type)
 
     # The upper search length is bounded by the minimum of:
     # The maximum length in our search query range
-    # Or the maximum length that does not overlap with an ambiguous base
     upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=data_type)
 
-    upper_bound_change_count, short_kmers_discarded_count = update_upper_search_bound(upper_length_bound,
-                                  lower_length_bound,
-                                  current_length_query,
-                                  finished_search,
-                                  sequence_segment.data,
-                                  max_kmer_length,
-                                  min_kmer_length)
+    # Or the maximum length that does not overlap with an ambiguous base
+    update_upper_search_bound(upper_length_bound,
+                              lower_length_bound,
+                              current_length_query,
+                              finished_search,
+                              max_kmer_length,
+                              min_kmer_length)
 
-    upper_bound_change_count = np.count_nonzero(
-        upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
+    if verbose:
+        upper_bound_change_count = np.count_nonzero(
+            upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
 
-    if (upper_bound_change_count):
+        short_kmers_discarded_count = (finished_search.sum() -
+                                       ambiguous_positions_skipped)
+
         verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
                                "ranges truncated due to ambiguity")
 
-    if (short_kmers_discarded_count):
+
         verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
                       "than the minimum length discarded due to ambiguity")
 
@@ -300,51 +303,41 @@ def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
                               lower_length_bound_array: npt.NDArray[np.uint],
                               current_length_query_array: npt.NDArray[np.uint],
                               finished_search_array: npt.NDArray[np.bool_],
-                              sequence_data: bytes,
                               max_kmer_length,
-                              min_kmer_length) -> Tuple[int, int]:
-    """Return the count of changed positions"""
-
-    # NB: The following is effecitvely O(n^2) where the max k-mer length and
-    # sequence length are similar in size/magnitude
-    # There might be a better way based on finding the ambiguous bases in the
-    # sequence buffer, and then setting the max lengths of the previous
-    # positions based on their location up to the max k away
-
-    upper_bound_change_count = 0
-    short_kmers_discarded_count = 0
+                              min_kmer_length):
+    """Modifies in the input arrays to update the upper search bound based on
+    ambiguous bases in the sequence data.
+    Updates the query lengths between the new maximum upper bound
+    Marks positions with less than the minimum kmer length as finished
+    """
 
     data_type = current_length_query_array.dtype
 
-    # TODO: Fix this
-    # For every non-ambiguous starting position
-    for i in np.nonzero(~finished_search_array)[0]:
-        # Get what would the maximum length kmer for this position
-        max_length_kmer = sequence_data[i:i+max_kmer_length]
-        # Search for the first occurence of a base that is ambiguous
-        # NB: The index is 0-based, so the index is equal to the length
-        # that excludes its own position
-        # NB: This is very slow for large sequences
-        maximum_non_ambiguous_length = max_length_kmer.find(b'N')
-        # If we found an index where an ambiguous base is
-        if maximum_non_ambiguous_length != -1:
-            # If the found length is longer than the minimum kmer length
-            if maximum_non_ambiguous_length >= min_kmer_length:
-                # Set the maximum length (to the index of the ambiguous base)
-                upper_length_bound_array[i] = maximum_non_ambiguous_length
-                # Recalculate the current query length (as a midpoint)
-                current_length_query_array[i] = np.floor(
-                    (upper_length_bound_array[i] / 2) +
-                    (lower_length_bound_array[i] / 2)).astype(data_type)
-                upper_bound_change_count += 1
-            # Otherwise
-            else:
-                # Cannot find a length that would be smaller than the minimum
-                # Mark this position as finished
-                short_kmers_discarded_count += 1
-                finished_search_array[i] = True
+    # NB: Assume the finished search array is all the ambigiuous positions at
+    # this point
+    # NB: The prepend of np.nan is to ensure the first position is always not
+    # counted and it does an implicit conversion to bool to float conversion
+    ambiguous_starting_positions = \
+        np.where(np.diff(finished_search_array, prepend=np.nan) > 0)[0]
+    max_lengths_to_ambiguous_position = \
+        np.arange(max_kmer_length-1, 0, -1, dtype=data_type)
 
-    return upper_bound_change_count, short_kmers_discarded_count
+    # For every ambigious starting position in reverse order
+    for i in ambiguous_starting_positions[::-1]:
+        # From (max kmer length - 1) positions before this position:
+        length_change_position = i - (max_lengths_to_ambiguous_position.size)
+        minimum_length_position = i - min_kmer_length
+        # Set the maximum length up to 1 next to the ambiguous base position
+        upper_length_bound_array[length_change_position:i] = \
+            max_lengths_to_ambiguous_position
+        # Calculate the new query length as the midpoint between the updated
+        # upper and the current lower bounds
+        current_length_query_array[length_change_position:i] = np.floor(
+            (upper_length_bound_array[length_change_position:i] / 2) +
+            (lower_length_bound_array[length_change_position:i] / 2)).astype(
+            data_type)
+        # Mark positions with values of (min length - 1) to 1 as finished
+        finished_search_array[minimum_length_position+1:i] = True
 
 
 def linear_search(index_filename: Path,
