@@ -58,15 +58,26 @@ to be unique at each position from a given range of k-mer lengths. See the
 
 Options
 -------
+- `initial-search-length`: The initial k-mer length to search for unique sequences.
+  Only valid when the set of lengths of k-mer lengths is a continuous range
+  with the ``kmer-lengths`` option (which is a pair of values separated by a
+  colon). Useful to use when the majority of largest minimum unique lengths are
+  likely to be much smaller the maximum search length from your specified range.
+- `exclude-bases`: A string of bases to exclude from the search for unique
+  sequences. Case sensitive. Default is 'Nn'.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
-- `thread-count`: The number of threads to use for counting on the index. Default is 1.
-- `verbose`: Print verbose output. Includes summary statistics at end of each sequence. Default is False.
+- `thread-count`: The number of threads to use for counting on the index.
+  Default is 1.
+- `verbose`: Print verbose output. Includes summary statistics at end of each
+  sequence. Default is False.
 
 Positional Arguments
 --------------------
-- `kmer-lengths`: The range of k-mer lengths to search for unique sequences.
+- `kmer-lengths`: The range of k-mer lengths to search for unique sequences. A
+  colon seperated pair of values specifies a continuous range. A comma
+  seperated list specifies specific lengths to search.
 - `index-file`: The name of the index file to use for searching for unique sequences.
 - `fasta-file`: The name of the fasta file containing sequence(s) where each
   sequence ID will have a ``unique`` file generated. Must be equal to or a
@@ -100,6 +111,21 @@ useful as a guideline for future search ranges on other sequences.
 Notably if your the largest k-mer length found is smaller than the maximum
 length and your minimum is larger than your (colon seperated) range, it
 signifies that the sequence has been exhaustively searched.
+
+Ambiguous bases
+^^^^^^^^^^^^^^^
+
+Due to the implementation of the AWFM-index, `all non-ACGT bases are treated as
+an equivalent base
+<https://almob.biomedcentral.com/articles/10.1186/s13015-021-00204-6/tables/1>`_.
+Unless specified otherwise, if a k-mer sequence contains a non-ACGT base, it
+will be counted on the index as an exact match to any other non-ACGT base. By
+default, The bases 'N' and 'n' are treated as ambiguous bases and will be
+excluded from being candidates for unique k-mers. The index library does not
+distinguish between upper and lower cases, however we provide the ability to
+exclude candidate k-mers based on case sensitivity to allow flexibility for
+soft-masked sequences conventionally introduced by software such as
+`RepeatMasker<https://www.repeatmasker.org/>`_.
 
 Threading
 ^^^^^^^^^

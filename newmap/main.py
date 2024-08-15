@@ -12,6 +12,7 @@ DEFAULT_KMER_BATCH_SIZE = 1000000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_MINIMUM_KMER_LENGTH = 20
 DEFAULT_MAXIMUM_KMER_LENGTH = 200
+DEFAULT_EXCLUDED_BASES = 'Nn'
 
 # Defaults for mappability output
 DEFAULT_KMER_SIZE = 24
@@ -79,10 +80,10 @@ def parse_subcommands():
 
     unique_length_parser.add_argument(
         "kmer_lengths",
-        help="Specify k-mer lengths to find unique kmers. "
+        help="Specify k-mer lengths to find unique k-mers. "
              "Use a comma seperated list of increasing lengths "
              "or a full inclusive set of lengths seperated by a colon. "
-             "Example: 20,24,30 or 20-30.")
+             "Example: 20,24,30 or 20:30.")
 
     unique_length_parser.add_argument(
         "index_file",
@@ -93,20 +94,34 @@ def parse_subcommands():
         help="Filename of (gzipped) fasta file for kmer generation")
 
     unique_length_parser.add_argument(
+        "--initial-search-length", "-l",
+        type=int,
+        default=0,
+        help="Specify the initial search length for unique k-mers. Only valid "
+             "when search range is a continous range separated by a colon."
+    )
+
+    unique_length_parser.add_argument(
+        "--exclude-bases", "-e",
+        default=DEFAULT_EXCLUDED_BASES,
+        help=f"Specify bases to exclude from k-mer candidacy. Case sensitive. "
+             f"Default is {DEFAULT_EXCLUDED_BASES}")
+
+    unique_length_parser.add_argument(
         "--kmer-batch-size", "-s",
         default=DEFAULT_KMER_BATCH_SIZE,
         type=int,
         help="Maximum number of kmers to batch per reference sequence from "
              "given fasta file. "
              "Use to control memory usage. "
-             "Default is {}" .format(DEFAULT_KMER_BATCH_SIZE))
+             "Default is {}".format(DEFAULT_KMER_BATCH_SIZE))
 
     unique_length_parser.add_argument(
         "--thread-count", "-t",
         default=DEFAULT_THREAD_COUNT,
         type=int,
         help="Number of threads to parallelize kmer counting. "
-             "Default is {}" .format(DEFAULT_THREAD_COUNT))
+             "Default is {}".format(DEFAULT_THREAD_COUNT))
 
     unique_length_parser.add_argument(
         "--verbose",

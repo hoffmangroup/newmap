@@ -12,5 +12,6 @@ To reproduce the ``unique.uint8`` datasets that would have been generated from
 Umap, the following criteria must be met:
 
 1. K-mers overlapping specifically with dinucleotide sequence ``N`` are not
-   considered unique. This is the default.
+   considered unique and should be excluded as candidates. Note that this
+   excludes any soft-masked regions with ``n`` characters.
 2. Only the following k-mer lengths should be included: 24,36,50,100,150,200
