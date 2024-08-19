@@ -60,9 +60,10 @@ Options
 -------
 - `initial-search-length`: The initial k-mer length to search for unique sequences.
   Only valid when the set of lengths of k-mer lengths is a continuous range
-  with the ``kmer-lengths`` option (which is a pair of values separated by a
-  colon). Useful to use when the majority of largest minimum unique lengths are
-  likely to be much smaller the maximum search length from your specified range.
+  with the ``kmer-lengths`` postional argument (which is a pair of values
+  separated by a colon). Useful to use when the majority of largest minimum
+  unique lengths are likely to be much smaller the maximum search length from
+  your specified range.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
@@ -106,9 +107,9 @@ logarithmic increase in compute time.
 The verbose output will print statistics such as the minimum and maximum k-mer
 lengths that were found to be unique from the specified range. This can be
 useful as a guideline for future search ranges on other sequences.
-Notably if your the largest k-mer length found is smaller than the maximum
+Notably if your the largest k-mer length found is much smaller than the maximum
 length and your minimum is larger than your (colon seperated) range, it
-signifies that the sequence has been exhaustively searched.
+signifies that the sequence has likely been exhaustively searched.
 
 Ambiguous bases
 ^^^^^^^^^^^^^^^
@@ -118,7 +119,7 @@ an equivalent base
 <https://almob.biomedcentral.com/articles/10.1186/s13015-021-00204-6/tables/1>`_.
 Newmap takes the approach of only permitting ACGT bases and their lowercase
 soft-masked equivalent conventionally introduced by software such as
-`RepeatMasker<https://www.repeatmasker.org/>`_. All other character codes are
+`RepeatMasker <https://www.repeatmasker.org>`_. All other character codes are
 treated as ambiguous bases and are excluded from the search for unique minimum
 length k-mers.
 

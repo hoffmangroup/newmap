@@ -21,9 +21,9 @@ single unsigned 8 bit integer (1 byte each), and ``uint16`` likewise has each
 length represented by unsigned 16 bit integer (2 bytes each). No other data is
 stored in the file. The data type is chosen based on the maximum length
 specified in range specified to :ref:`unique-lengths`. For example, in a search
-range from 20 to 255, the maximum unique minimum length is less than 256 (which
-is the maximum value that can be represented with an unsigned byte), therefore
-the ``uint8`` format will be used.
+range from 20 to 255, the maximum unique minimum length is less than or equal
+to 255 (which is the maximum value that can be represented with an unsigned
+byte), therefore the ``uint8`` format will be used.
 
 -----
 Usage
@@ -39,6 +39,4 @@ numpy.
     minimum_unique_lengths = np.fromfile('chr1.unique.uint8', dtype=np.uint8)
 
     # Print fraction of unique minimum lengths found
-    print(np.count_nonzero(minimum_unique_lengths) / len(minimum_unique_lengths)
-
-
+    print(np.count_nonzero(minimum_unique_lengths) / len(minimum_unique_lengths))

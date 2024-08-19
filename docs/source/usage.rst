@@ -22,13 +22,13 @@ To install Newmap, you can install using pip:
 
 .. code-block:: console
 
-   $ pip install pynewmap
+   $ pip install newmap
 
 You can also install from Bioconda:
 
 .. code-block:: console
 
-   $ conda install -c bioconda pynewmap
+   $ conda install -c bioconda newmap
 
 To install from source (on linux), clone the repository and run:
 
