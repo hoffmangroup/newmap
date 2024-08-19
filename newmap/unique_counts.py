@@ -12,6 +12,7 @@ from newmap.fasta import SequenceSegment, sequence_segments
 KMER_RANGE_SEPARATOR = ":"
 
 COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
+ALLOWED_BASES = b'ACGTactg'
 UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.{}"
 
 
@@ -20,7 +21,6 @@ def write_unique_counts(fasta_filename: Path,
                         kmer_batch_size: int,
                         kmer_lengths: list[int],
                         initial_search_length: int,
-                        exclude_bases: set[bytes],
                         num_threads: int,
                         use_binary_search=False,
                         verbose: bool = False):
@@ -113,7 +113,6 @@ def write_unique_counts(fasta_filename: Path,
                                   min_kmer_length,
                                   max_kmer_length,
                                   initial_search_length,
-                                  exclude_bases,
                                   num_threads,
                                   data_type,  # type: ignore
                                   verbose)
@@ -123,7 +122,6 @@ def write_unique_counts(fasta_filename: Path,
                                   sequence_segment,
                                   kmer_lengths,
                                   num_kmers,
-                                  exclude_bases,
                                   num_threads,
                                   data_type,  # type: ignore
                                   verbose)
@@ -161,7 +159,6 @@ def binary_search(index_filename: Path,
                   min_kmer_length: int,
                   max_kmer_length: int,
                   initial_search_length: int,
-                  exclude_bases: set[bytes],
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
@@ -178,8 +175,7 @@ def binary_search(index_filename: Path,
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     finished_search = get_ambiguous_positions(sequence_segment,
-                                              num_kmers,
-                                              exclude_bases)
+                                              num_kmers)
 
     # Print out the number of ambiguous positions skipped
     ambiguous_positions_skipped = finished_search.sum()
@@ -367,7 +363,6 @@ def linear_search(index_filename: Path,
                   sequence_segment: SequenceSegment,
                   kmer_lengths: list[int],
                   num_kmers: int,
-                  exclude_bases: set[bytes],
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
@@ -375,8 +370,7 @@ def linear_search(index_filename: Path,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
     finished_search = get_ambiguous_positions(sequence_segment,
-                                              num_kmers,
-                                              exclude_bases)
+                                              num_kmers)
 
     ambiguous_positions_skipped = finished_search.sum()
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
@@ -505,8 +499,7 @@ def get_num_kmers(sequence_segment: SequenceSegment,
 
 
 def get_ambiguous_positions(sequence_segment: SequenceSegment,
-                            num_positions: int,
-                            ambiguous_bases: set[bytes]):
+                            num_positions: int):
     """Returns a boolean array of ambiguous positions in a sequence segment
        Where True is an ambiguous position and False is a non-ambiguous"""
 
@@ -516,11 +509,18 @@ def get_ambiguous_positions(sequence_segment: SequenceSegment,
                                     dtype=np.uint8,
                                     count=num_positions)
 
-    ambiguous_array_positions = np.full(num_positions, False, dtype=bool)
-    for base in ambiguous_bases:
-        ambiguous_array_positions |= (sequence_buffer == ord(base))
+    # Initially set all positions to non-ambiguous (False)
+    # ambiguous_array_positions = np.full(num_positions, False, dtype=bool)
 
-    return ambiguous_array_positions
+    # Initially mark every position as ambiguous
+    allowed_positions = np.full(num_positions, False, dtype=bool)
+    # For every allowed base
+    for base in ALLOWED_BASES:
+        # Set this position to non-ambiguous
+        allowed_positions |= (sequence_buffer == base)
+
+    # return ambiguous_array_positions
+    return ~allowed_positions
 
 
 def print_summary_statisitcs(verbose: bool,
@@ -551,7 +551,6 @@ def main(args):
     kmer_batch_size = args.kmer_batch_size
     kmer_lengths_arg = args.kmer_lengths
     initial_search_length = args.initial_search_length
-    exclude_bases_arg = args.exclude_bases
     num_threads = args.thread_count
     verbose = args.verbose
 
@@ -582,15 +581,11 @@ def main(args):
         raise ValueError("Initial search length only valid when a range of "
                          "k-mer lengths is given")
 
-    exclude_bases = set([bytes(base, encoding="utf-8")
-                         for base in exclude_bases_arg])
-
     write_unique_counts(Path(fasta_filename),
                         Path(index_filename),
                         kmer_batch_size,
                         kmer_lengths,
                         initial_search_length,
-                        exclude_bases,
                         num_threads,
                         use_binary_search,
                         verbose)

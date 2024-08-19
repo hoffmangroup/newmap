@@ -63,8 +63,6 @@ Options
   with the ``kmer-lengths`` option (which is a pair of values separated by a
   colon). Useful to use when the majority of largest minimum unique lengths are
   likely to be much smaller the maximum search length from your specified range.
-- `exclude-bases`: A string of bases to exclude from the search for unique
-  sequences. Case sensitive. Default is 'Nn'.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
@@ -118,14 +116,11 @@ Ambiguous bases
 Due to the implementation of the AWFM-index, `all non-ACGT bases are treated as
 an equivalent base
 <https://almob.biomedcentral.com/articles/10.1186/s13015-021-00204-6/tables/1>`_.
-Unless specified otherwise, if a k-mer sequence contains a non-ACGT base, it
-will be counted on the index as an exact match to any other non-ACGT base. By
-default, The bases 'N' and 'n' are treated as ambiguous bases and will be
-excluded from being candidates for unique k-mers. The index library does not
-distinguish between upper and lower cases, however we provide the ability to
-exclude candidate k-mers based on case sensitivity to allow flexibility for
-soft-masked sequences conventionally introduced by software such as
-`RepeatMasker<https://www.repeatmasker.org/>`_.
+Newmap takes the approach of only permitting ACGT bases and their lowercase
+soft-masked equivalent conventionally introduced by software such as
+`RepeatMasker<https://www.repeatmasker.org/>`_. All other character codes are
+treated as ambiguous bases and are excluded from the search for unique minimum
+length k-mers.
 
 Threading
 ^^^^^^^^^

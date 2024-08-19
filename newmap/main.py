@@ -102,12 +102,6 @@ def parse_subcommands():
     )
 
     unique_length_parser.add_argument(
-        "--exclude-bases", "-e",
-        default=DEFAULT_EXCLUDED_BASES,
-        help=f"Specify bases to exclude from k-mer candidacy. Case sensitive. "
-             f"Default is {DEFAULT_EXCLUDED_BASES}")
-
-    unique_length_parser.add_argument(
         "--kmer-batch-size", "-s",
         default=DEFAULT_KMER_BATCH_SIZE,
         type=int,
