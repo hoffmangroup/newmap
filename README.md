@@ -12,6 +12,7 @@ Newmap can search for minimum k-mer lengths for specific values, or entire
 continuous ranges using a binary search method allowing for computing all
 possible minimum unique k-mer lengths for any sequence.
 
+Newmap requires a CPU that supports the AVX2 instruction set.
 
 ## Quick start
 

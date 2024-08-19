@@ -8,6 +8,8 @@ These unique counts are stored in a ``.unique`` file which is a binary file
 containing integers of the minimum unique length found. These files can be used
 to generate mappability data for a give k-mer length.
 
+Newmap requires a CPU with AVX2 support, and has only been tested on Linux.
+
 For instructions on how to install see the `Installation`_ section.
 For a quick example on how to get started, see the `Quickstart`_ section.
 For details on the command line options, see the :ref:`Commands` section.
