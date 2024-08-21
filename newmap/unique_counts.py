@@ -564,7 +564,7 @@ def main(args):
             min_kmer_length, max_kmer_length = map(
                 int, kmer_lengths_arg.split(KMER_RANGE_SEPARATOR))
         except ValueError:
-            raise ValueError("Only one colon allowed for length range")
+            raise ValueError("Could not parse k-mer search range format")
 
         if min_kmer_length > max_kmer_length:
             raise ValueError("K-mer range start length is larger than the end "
