@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <getopt.h>  /* command line parsing */
-#include <wchar.h>
-
 #include "AwFmIndex.h"
 
 #define PY_SSIZE_T_CLEAN
