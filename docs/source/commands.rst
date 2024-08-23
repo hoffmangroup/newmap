@@ -64,6 +64,10 @@ Options
   separated by a colon). Useful to use when the majority of largest minimum
   unique lengths are likely to be much smaller the maximum search length from
   your specified range.
+- `include-sequences`: A comma separated list of sequence IDs to include in the
+  search for unique sequences from the `fasta-file` parameter. If not
+  specified, all sequences will be searched. Sequence IDs specified that do not
+  exist in the `fasta-file` will have no effect and will be ignored.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
