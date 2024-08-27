@@ -342,18 +342,31 @@ def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
     # For every ambigious starting position in reverse order
     for i in ambiguous_starting_positions[::-1]:
         # From (max kmer length - 1) positions before this position:
-        length_change_position = i - (max_lengths_to_ambiguous_position.size)
-        minimum_length_position = i - min_kmer_length
-        # Set the maximum length up to 1 next to the ambiguous base position
-        upper_length_bound_array[length_change_position:i] = \
-            max_lengths_to_ambiguous_position
+
+        # Skip if the ambiguous position is at position 0
+        if i == 0:
+            continue
+
+        # Calculate the starting position where the upper length bounds will
+        # change
+        # NB: Account for the case where our ambigious position is less than
+        # the max kmer length - 1
+        upper_length_change_position = \
+            max(0, i - (max_lengths_to_ambiguous_position.size))
+
+        # This value is different from the max kmer length (-1) if the
+        # ambiguous position is less than the max kmer length - 1 (near the
+        # start of the arrays)
+        num_upper_length_changes = i - upper_length_change_position
+        upper_length_bound_array[upper_length_change_position:i] = \
+            max_lengths_to_ambiguous_position[-num_upper_length_changes:]
 
         # Calculate the new query length as the midpoint between the updated
         # upper and the current lower bounds
         new_initial_search_array = np.floor(
-            (upper_length_bound_array[length_change_position:i] / 2) +
-            (lower_length_bound_array[length_change_position:i] / 2)).astype(
-            data_type)
+            (upper_length_bound_array[upper_length_change_position:i] / 2) +
+            (lower_length_bound_array[upper_length_change_position:i] /
+             2)).astype(data_type)
 
         # If we have an initial search length
         if initial_search_length:
@@ -361,11 +374,13 @@ def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
             new_initial_search_array = np.fmin(new_initial_search_array,
                                                initial_search_length)
 
-        current_length_query_array[length_change_position:i] = \
+        current_length_query_array[upper_length_change_position:i] = \
             new_initial_search_array
 
         # Mark positions with values of (min length - 1) to 1 as finished
-        finished_search_array[minimum_length_position+1:i] = True
+        finished_search_array[upper_length_change_position:i] = \
+            (upper_length_bound_array[upper_length_change_position:i] <
+             min_kmer_length)
 
 
 def linear_search(index_filename: Path,
