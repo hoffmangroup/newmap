@@ -20,17 +20,17 @@ class SequenceSegment:
 def sequence_segments(
     fasta_file: Union[GzipFile, TextIO, IO[Any], BinaryIO],
     sequence_length: int,
-    sequence_lookahead_length: int = 0
+    sequence_overlap_length: int = 0
 ) -> Generator[SequenceSegment, None, None]:
 
     """Iterates through a fasta file and yields SequenceSegment(s) for each
     sequence.
 
     The size of the each sequence segment is specified by the sequence_length
-    parameter plus the lookahead length and will fill until there is sequence
-    data in the fasta sequence left.
+    parameter and will fill until there is sequence data in the fasta sequence
+    left.
     The sequence lookahead length allows for subsequent iterations to have a
-    segment that includes the previous sequence that was "looked ahead".
+    length of segment that includes the previous sequence.
     """
 
     # NB: Immutable sequence of bytes
@@ -48,10 +48,10 @@ def sequence_segments(
         # new sequence, notably including comments
         if fasta_line.startswith(FASTA_FILE_IGNORE_DELIMITERS):  # type: ignore
             # Yield the current sequence segment if there is remaining sequence
-            # NB: We always keep the lookahead in the working sequence buffer
-            # Therefore there can only be sequence remaining if it is longer
-            # than the lookeahead length
-            if len(working_sequence_buffer) > sequence_lookahead_length:
+            # NB: We always keep the lookahead/overlap in the working sequence
+            # buffer, therefore there can only be sequence remaining if it is
+            # longer than the lookahead/overlap length
+            if len(working_sequence_buffer) > sequence_overlap_length:
                 yield SequenceSegment(current_sequence_id,  # type: ignore
                                       bytes(working_sequence_buffer))
 
@@ -75,14 +75,14 @@ def sequence_segments(
                 # minus the lookahead
                 # XXX: Assert that the kmer/sequence length is always larger
                 # than the lookahead length?
-                truncate_length = sequence_length - sequence_lookahead_length
+                truncate_length = sequence_length - sequence_overlap_length
                 working_sequence_buffer = \
                     working_sequence_buffer[truncate_length:]
 
     # Yield the last sequence segment
     # NB: We always keep the lookahead in the working sequence buffer
     # So there needs to be check if it is longer the lookahead length
-    if len(working_sequence_buffer) > sequence_lookahead_length:
+    if len(working_sequence_buffer) > sequence_overlap_length:
         yield SequenceSegment(current_sequence_id,  # type: ignore
                               bytes(working_sequence_buffer),
                               epilogue=True)

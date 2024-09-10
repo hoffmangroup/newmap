@@ -51,6 +51,26 @@ class TestSequenceBufferIterator(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, buffer_iter)
 
+    def test_long_sequence_length(self):
+        buffer_iter = sequence_segments(self.chr2_fasta_file, 100, 4)
+        sequence_buffer = next(buffer_iter)
+
+        self.assertTrue(sequence_buffer.epilogue)
+        self.assertEqual(len(sequence_buffer.data), 18)
+
+    def test_long_lookahead_length(self):
+        buffer_iter = sequence_segments(self.chr2_fasta_file, 16, 10)
+
+        sequence_buffer = next(buffer_iter)
+        self.assertFalse(sequence_buffer.epilogue)
+        self.assertEqual(len(sequence_buffer.data), 16)
+        self.assertEqual(b'CGCANCAGAGCANCGN', sequence_buffer.data)
+
+        sequence_buffer = next(buffer_iter)
+        self.assertTrue(sequence_buffer.epilogue)
+        self.assertEqual(len(sequence_buffer.data), 12)
+        self.assertEqual(b'AGAGCANCGNCG', sequence_buffer.data)
+
     def test_multiline_sequence(self):
         buffer_iter = sequence_segments(self.chr2_fasta_file, 12, 4)
         sequence_buffer = next(buffer_iter)

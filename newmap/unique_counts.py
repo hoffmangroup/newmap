@@ -102,16 +102,7 @@ def write_unique_counts(fasta_filename: Path,
                               "Writing minimum unique lengths for sequence "
                               "ID: {}".format(sequence_segment.id.decode()))
 
-            # If this is the last sequence segment
-            if sequence_segment.epilogue:
-                # The number of kmers is equal to the entire length of the
-                # sequence segment
-                num_kmers = len(sequence_segment.data)
-            # Otherwise
-            else:
-                # The number of kmers is equal to kmer batch size
-                # (or the sequence segment length minus the lookahead)
-                num_kmers = kmer_batch_size
+            num_kmers = get_num_kmers(sequence_segment, max_kmer_length)
 
             verbose_print(verbose, "Processing {} k-mers".format(num_kmers))
 
