@@ -104,7 +104,14 @@ def parse_subcommands():
     unique_length_parser.add_argument(
         "--include-sequences", "-i",
         help="A comma separated list of sequence IDs to select from the given "
-             "fasta file. Default is to use all sequences when not specified.")
+             "fasta file. Default is to use all sequences when not specified. "
+             "Cannot be used with --exclude-sequences.")
+
+    unique_length_parser.add_argument(
+        "--exclude-sequences", "-x",
+        help="A comma separated list of sequence IDs to exclude from the "
+             "given fasta file. Default is to use all sequences when not "
+             "specified. Cannot be used with --include-sequences.")
 
     unique_length_parser.add_argument(
         "--kmer-batch-size", "-s",

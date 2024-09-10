@@ -58,16 +58,22 @@ to be unique at each position from a given range of k-mer lengths. See the
 
 Options
 -------
-- `initial-search-length`: The initial k-mer length to search for unique sequences.
-  Only valid when the set of lengths of k-mer lengths is a continuous range
-  with the ``kmer-lengths`` postional argument (which is a pair of values
-  separated by a colon). Useful to use when the majority of largest minimum
-  unique lengths are likely to be much smaller the maximum search length from
-  your specified range.
+- `initial-search-length`: The initial k-mer length to search for unique
+  sequences. Only valid when the set of lengths of k-mer lengths is a
+  continuous range with the ``kmer-lengths`` postional argument (which is a
+  pair of values separated by a colon). Useful to use when the majority of
+  largest minimum unique lengths are likely to be much smaller the maximum
+  search length from your specified range.
 - `include-sequences`: A comma separated list of sequence IDs to include in the
   search for unique sequences from the `fasta-file` parameter. If not
   specified, all sequences will be searched. Sequence IDs specified that do not
-  exist in the `fasta-file` will have no effect and will be ignored.
+  exist in the `fasta-file` will have no effect and will be ignored. Cannot be
+  used with `exclude-sequences`.
+- `exclude-sequences`: A comma separated list of sequence IDs to exclude in the
+  search for unique sequences from the `fasta-file` parameter. If not
+  specified, all sequences will be searched. Sequence IDs specified that do not
+  exist in the `fasta-file` will have no effect and will be ignored. Cannot be
+  used with `include-sequences`.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
   is 1000000.
@@ -81,7 +87,8 @@ Positional Arguments
 - `kmer-lengths`: The range of k-mer lengths to search for unique sequences. A
   colon seperated pair of values specifies a continuous range. A comma
   seperated list specifies specific lengths to search.
-- `index-file`: The name of the index file to use for searching for unique sequences.
+- `index-file`: The name of the index file to use for searching for unique
+  sequences.
 - `fasta-file`: The name of the fasta file containing sequence(s) where each
   sequence ID will have a ``unique`` file generated. Must be equal to or a
   subset of the sequence used to generate the index used for ``index-file``.

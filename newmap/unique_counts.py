@@ -23,6 +23,7 @@ def write_unique_counts(fasta_filename: Path,
                         kmer_lengths: list[int],
                         initial_search_length: int,
                         include_sequence_ids: list[bytes],
+                        exclude_sequence_ids: list[bytes],
                         num_threads: int,
                         use_binary_search=False,
                         verbose: bool = False):
@@ -78,11 +79,14 @@ def write_unique_counts(fasta_filename: Path,
             # If we are on a new sequence
             if current_sequence_id != sequence_segment.id:
                 # If we are only including specific sequences IDs
-                if include_sequence_ids:
+                if (include_sequence_ids or
+                   exclude_sequence_ids):
                     # And this sequence IDs is not in the list
-                    if sequence_segment.id not in include_sequence_ids:
-                        # Skip towards the next sequence ID
+                    # Or if this sequence is in the exclude list
+                    if ((sequence_segment.id not in include_sequence_ids) or
+                       (sequence_segment.id in exclude_sequence_ids)):
                         continue
+
                 # Otherwise
                 # Truncate any existing file for the new sequence
                 open(UNIQUE_COUNT_FILENAME_FORMAT.format(
@@ -567,6 +571,7 @@ def main(args):
     kmer_lengths_arg = args.kmer_lengths
     initial_search_length = args.initial_search_length
     include_sequences_arg = args.include_sequences
+    exclude_sequences_arg = args.exclude_sequences
     num_threads = args.thread_count
     verbose = args.verbose
 
@@ -597,11 +602,22 @@ def main(args):
         raise ValueError("Initial search length only valid when a range of "
                          "k-mer lengths is given")
 
+    if (include_sequences_arg and
+       exclude_sequences_arg):
+        raise ValueError("Cannot include and exclude sequences at the same "
+                         "time")
+
     include_sequence_ids = []
     if include_sequences_arg:
         include_sequence_ids = \
             [s.encode() for s in
              include_sequences_arg.split(SEQUENCE_ID_SEPARATOR)]
+
+    exclude_sequence_ids = []
+    if exclude_sequences_arg:
+        exclude_sequence_ids = \
+            [s.encode() for s in
+             exclude_sequences_arg.split(SEQUENCE_ID_SEPARATOR)]
 
     write_unique_counts(Path(fasta_filename),
                         Path(index_filename),
@@ -609,6 +625,7 @@ def main(args):
                         kmer_lengths,
                         initial_search_length,
                         include_sequence_ids,
+                        exclude_sequence_ids,
                         num_threads,
                         use_binary_search,
                         verbose)
