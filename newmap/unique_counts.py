@@ -85,6 +85,7 @@ def write_unique_counts(fasta_filename: Path,
                     # Or if this sequence is in the exclude list
                     if ((sequence_segment.id not in include_sequence_ids) or
                        (sequence_segment.id in exclude_sequence_ids)):
+                        # Skip the current buffer
                         continue
 
                 # Otherwise
@@ -138,11 +139,22 @@ def write_unique_counts(fasta_filename: Path,
                                               unique_lengths_count -
                                               ambiguous_count)
 
-            max_length_found = max(max_length_found,
-                                   segment_unique_counts.max())
-            min_length_found = min(
-                min_length_found,
-                segment_unique_counts[segment_unique_counts.nonzero()].min())
+            # If any amount of unique lengths were found
+            if unique_lengths_count > 0:
+                max_length_found = max(max_length_found,
+                                       segment_unique_counts.max())
+                min_length_found = min(
+                    min_length_found,
+                    segment_unique_counts[
+                        segment_unique_counts.nonzero()
+                     ].min()
+                )
+            # Otherwise
+            # NB: If no unique lengths were found
+            # neither the max or the minimum will not change
+            else:
+                verbose_print(verbose, "No unique lengths found for this "
+                                       "sequence segment")
 
             # Append the unique counts to a unique count file per sequence
             with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
