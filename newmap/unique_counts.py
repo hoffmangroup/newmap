@@ -97,6 +97,7 @@ def write_unique_counts(fasta_filename: Path,
                 current_sequence_id = sequence_segment.id
 
                 print_summary_statisitcs(verbose,
+                                         sequence_segment.id,
                                          total_unique_lengths_count,
                                          total_ambiguous_positions,
                                          total_no_unique_lengths_count,
@@ -163,6 +164,7 @@ def write_unique_counts(fasta_filename: Path,
                 segment_unique_counts.tofile(unique_count_file)
 
         print_summary_statisitcs(verbose,
+                                 sequence_segment.id,
                                  total_unique_lengths_count,
                                  total_ambiguous_positions,
                                  total_no_unique_lengths_count,
@@ -555,6 +557,7 @@ def get_ambiguous_positions(sequence_segment: SequenceSegment,
 
 
 def print_summary_statisitcs(verbose: bool,
+                             sequence_id: bytes,
                              total_unique_lengths_count: int,
                              total_ambiguous_positions: int,
                              total_no_unique_lengths_count: int,
@@ -562,6 +565,9 @@ def print_summary_statisitcs(verbose: bool,
                              min_length_found: int):
     if (verbose and
             total_unique_lengths_count):
+        verbose_print(verbose,
+                      f"Finished writing minimum unique lengths for sequence "
+                      f"ID: {sequence_id.decode()}")
         verbose_print(verbose,
                       f"{total_unique_lengths_count} unique lengths found")
         verbose_print(verbose,
