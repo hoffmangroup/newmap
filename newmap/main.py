@@ -1,6 +1,11 @@
 from argparse import ArgumentParser
+from importlib.metadata import version
+import sys
 
 from newmap import generate_index, unique_counts, unique_counts_conversion
+
+# Will throw PackagfeNotFoundError if package is not installed
+__version__ = version("newmap")
 
 # Defaults for FM-index generation
 DEFAULT_INDEX_NAME = "index.awfmi"
@@ -22,6 +27,11 @@ def parse_subcommands():
     parser = ArgumentParser(
         description="Newmap: A tool for generating mappability "
                     "data for a reference sequences")
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(
         title="Newmap subcommands",
@@ -171,11 +181,15 @@ def parse_subcommands():
         action="store_true",
         help="Print additional information to standard error",)
 
-    # Parse the arguments
-    args = parser.parse_args()
-
-    # Call the function associated with the subcommand
-    args.func(args)
+    # If there are no arguments, print the help message
+    if len(sys.argv) == 1:
+        parser.print_help()
+    # Otherwise
+    else:
+        # Parse the arguments
+        args = parser.parse_args()
+        # Call the function associated with the subcommand
+        args.func(args)
 
 
 if __name__ == "__main__":
