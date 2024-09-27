@@ -97,7 +97,7 @@ def write_unique_counts(fasta_filename: Path,
                 current_sequence_id = sequence_segment.id
 
                 print_summary_statisitcs(verbose,
-                                         sequence_segment.id,
+                                         current_sequence_id,
                                          total_unique_lengths_count,
                                          total_ambiguous_positions,
                                          total_no_unique_lengths_count,
@@ -164,7 +164,7 @@ def write_unique_counts(fasta_filename: Path,
                 segment_unique_counts.tofile(unique_count_file)
 
         print_summary_statisitcs(verbose,
-                                 sequence_segment.id,
+                                 current_sequence_id,
                                  total_unique_lengths_count,
                                  total_ambiguous_positions,
                                  total_no_unique_lengths_count,
