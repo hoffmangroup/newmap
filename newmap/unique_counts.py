@@ -213,25 +213,30 @@ def binary_search(index_filename: Path,
     upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=data_type)
 
     # Or the maximum length that does not overlap with an ambiguous base
-    update_upper_search_bound(upper_length_bound,
-                              lower_length_bound,
-                              current_length_query,
-                              finished_search,
-                              max_kmer_length,
-                              min_kmer_length,
-                              initial_search_length)
+    # NB: Modifies finished_search with positions that are too short
+    update_search_bounds(upper_length_bound,
+                         lower_length_bound,
+                         current_length_query,
+                         finished_search,
+                         max_kmer_length,
+                         min_kmer_length,
+                         initial_search_length)
 
-    # Print out the number of ambiguous positions skipped if verbosity is on
+    # If verbosity is on
     if verbose:
+        # Calculate out the number of kmer upper search ranges truncated
         upper_bound_change_count = np.count_nonzero(
             upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
-
-        short_kmers_discarded_count = (finished_search.sum() -
-                                       ambiguous_positions_skipped)
-
+        # And print it out
         verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
                                "ranges truncated due to ambiguity")
 
+        # Calculate the number of of kmers too short to be counted
+        # NB: The upper_search_bounds function updates the finished_search
+        # array with the positions that are too short to be counted
+        short_kmers_discarded_count = (finished_search.sum() -
+                                       ambiguous_positions_skipped)
+        # And print it out
         verbose_print(verbose, f"{short_kmers_discarded_count} k-mers shorter "
                       "than the minimum length discarded due to ambiguity")
 
@@ -324,13 +329,13 @@ def binary_search(index_filename: Path,
     return unique_lengths, ambiguous_positions_skipped
 
 
-def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
-                              lower_length_bound_array: npt.NDArray[np.uint],
-                              current_length_query_array: npt.NDArray[np.uint],
-                              finished_search_array: npt.NDArray[np.bool_],
-                              max_kmer_length,
-                              min_kmer_length,
-                              initial_search_length):
+def update_search_bounds(upper_length_bound_array: npt.NDArray[np.uint],
+                         lower_length_bound_array: npt.NDArray[np.uint],
+                         current_length_query_array: npt.NDArray[np.uint],
+                         finished_search_array: npt.NDArray[np.bool_],
+                         max_kmer_length,
+                         min_kmer_length,
+                         initial_search_length):
     """Modifies in the input arrays to update the upper search bound based on
     ambiguous bases in the sequence data.
     Updates the query lengths between the new maximum upper bound
@@ -386,9 +391,13 @@ def update_upper_search_bound(upper_length_bound_array: npt.NDArray[np.uint],
         current_length_query_array[upper_length_change_position:i] = \
             new_initial_search_array
 
+        # Calculate the starting position where the minimum length bounds will
+        # change
+        min_length_change_position = \
+            max(0, i - (min_kmer_length - 1))
         # Mark positions with values of (min length - 1) to 1 as finished
-        finished_search_array[upper_length_change_position:i] = \
-            (upper_length_bound_array[upper_length_change_position:i] <
+        finished_search_array[min_length_change_position:i] = \
+            (upper_length_bound_array[min_length_change_position:i] <
              min_kmer_length)
 
 
