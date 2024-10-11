@@ -228,8 +228,8 @@ def binary_search(index_filename: Path,
         upper_bound_change_count = np.count_nonzero(
             upper_length_bound[(~finished_search).nonzero()] < max_kmer_length)
         # And print it out
-        verbose_print(verbose, f"{upper_bound_change_count} k-mer search "
-                               "ranges truncated due to ambiguity")
+        verbose_print(verbose, f"{upper_bound_change_count} k-mer maximum "
+                               "search ranges truncated due to ambiguity")
 
         # Calculate the number of of kmers too short to be counted
         # NB: The upper_search_bounds function updates the finished_search
