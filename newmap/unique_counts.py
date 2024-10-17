@@ -289,6 +289,24 @@ def binary_search(index_filename: Path,
             # Otherwise keep the current unique length
             unique_lengths[counted_positions])
 
+        # If we have a k-mer count of 1 and the current length queried is the
+        # same as the lower bound (i.e. can't get smaller for a unique count)
+        # This position has finished searching
+        finished_search[counted_positions] = np.where(
+            count_list == 1,
+            current_length_query[counted_positions] ==
+            lower_length_bound[counted_positions],
+            finished_search[counted_positions])
+
+        # If we have a k-mer count > 1 and the current length queried is the
+        # same as the uppper bound (i.e. can't find a unique length or larger)
+        # This position has finished searching
+        finished_search[counted_positions] = np.where(
+            count_list > 1,
+            current_length_query[counted_positions] ==
+            upper_length_bound[counted_positions],
+            finished_search[counted_positions])
+
         # Update the query length and bounds for the next iteration
 
         # Lower the upper bounds of our search range on positions where
@@ -313,13 +331,6 @@ def binary_search(index_filename: Path,
         current_length_query[counted_positions] = np.floor(
             (upper_length_bound[counted_positions] / 2) +
             (lower_length_bound[counted_positions] / 2)).astype(data_type)
-
-        # If we have reduced our bounds to overlapping we have finished
-        # searching on this position
-        finished_search[counted_positions] = \
-            finished_search[counted_positions] | \
-            (upper_length_bound[counted_positions] <
-                lower_length_bound[counted_positions])
 
         iteration_count += 1
 
