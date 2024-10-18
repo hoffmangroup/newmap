@@ -257,10 +257,10 @@ def binary_search(index_filename: Path,
         # Track which kmer positions need to be counted on the index
         # Create a list of indices where each index refers to the corresponding
         # position in the given sequence segment
-        counted_positions = np.nonzero(np.copy(~finished_search))[0]
+        kmer_indices = np.nonzero(~finished_search)[0]
 
         # Create a list of kmers to count on the index
-        for i in counted_positions:
+        for i in kmer_indices:
             current_kmer_length = current_length_query[i]
             kmer = sequence_segment.data[i:i+current_kmer_length]
             working_kmers.append(kmer)
@@ -272,65 +272,65 @@ def binary_search(index_filename: Path,
 
         # Assert that the number of indices to count and the number of counts
         # are equal
-        assert counted_positions.size == count_list.size, \
+        assert kmer_indices.size == count_list.size, \
             "Number of counted positions ({}) and number of counts ({}) " \
-            "do not match".format(len(counted_positions), len(count_list))
+            "do not match".format(len(kmer_indices), len(count_list))
 
         # Where we have counts of 1
-        unique_lengths[counted_positions] = np.where(
+        unique_lengths[kmer_indices] = np.where(
             (count_list == 1) &
             # And if there is no current unique length recorded
-            ((unique_lengths[counted_positions] == 0) |
+            ((unique_lengths[kmer_indices] == 0) |
              # Or there is a smaller length found than the current min length
-             (current_length_query[counted_positions] <
-              unique_lengths[counted_positions])),
+             (current_length_query[kmer_indices] <
+              unique_lengths[kmer_indices])),
             # Record the minimum kmer length found if it less than the current
-            current_length_query[counted_positions],
+            current_length_query[kmer_indices],
             # Otherwise keep the current unique length
-            unique_lengths[counted_positions])
+            unique_lengths[kmer_indices])
 
         # If we have a k-mer count of 1 and the current length queried is the
         # same as the lower bound (i.e. can't get smaller for a unique count)
         # This position has finished searching
-        finished_search[counted_positions] = np.where(
+        finished_search[kmer_indices] = np.where(
             count_list == 1,
-            current_length_query[counted_positions] ==
-            lower_length_bound[counted_positions],
-            finished_search[counted_positions])
+            current_length_query[kmer_indices] ==
+            lower_length_bound[kmer_indices],
+            finished_search[kmer_indices])
 
         # If we have a k-mer count > 1 and the current length queried is the
         # same as the uppper bound (i.e. can't find a unique length or larger)
         # This position has finished searching
-        finished_search[counted_positions] = np.where(
+        finished_search[kmer_indices] = np.where(
             count_list > 1,
-            current_length_query[counted_positions] ==
-            upper_length_bound[counted_positions],
-            finished_search[counted_positions])
+            current_length_query[kmer_indices] ==
+            upper_length_bound[kmer_indices],
+            finished_search[kmer_indices])
 
         # Update the query length and bounds for the next iteration
 
         # Lower the upper bounds of our search range on positions where
         # we need to decrease our k-mer length (i.e. counts == 1)
         # Set the new upper (inclusive) bound to the current query length - 1
-        upper_length_bound[counted_positions] = np.where(
+        upper_length_bound[kmer_indices] = np.where(
             count_list == 1,
-            current_length_query[counted_positions] - 1,
-            upper_length_bound[counted_positions])
+            current_length_query[kmer_indices] - 1,
+            upper_length_bound[kmer_indices])
 
         # Raise the lower bounds of our search range on positions where
         # we need to increase our k-mer length (i.e. counts > 1)
         # Set the new lower (inclusive) bound to the current query length + 1
-        lower_length_bound[counted_positions] = np.where(
+        lower_length_bound[kmer_indices] = np.where(
             count_list > 1,
-            current_length_query[counted_positions] + 1,
-            lower_length_bound[counted_positions])
+            current_length_query[kmer_indices] + 1,
+            lower_length_bound[kmer_indices])
 
         # Calculate the new query length as the midpoint between the updated
         # upper and lower bounds
         # NB: Avoid overflow by dividing first before sum
-        current_length_query[counted_positions] = np.floor(
-            (upper_length_bound[counted_positions] / 2) +
-            (lower_length_bound[counted_positions] / 2)).astype(data_type)
+        current_length_query[kmer_indices] = np.floor(
+            (upper_length_bound[kmer_indices] / 2) +
+            (lower_length_bound[kmer_indices] / 2)).astype(data_type)
 
         iteration_count += 1
 
