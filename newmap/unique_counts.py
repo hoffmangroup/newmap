@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 import numpy.typing as npt
 
-from newmap._c_newmap_count_kmers import count_kmers
+from newmap._c_newmap_count_kmers import count_kmers_from_sequence
 from newmap.util import optional_gzip_open, verbose_print
 from newmap.fasta import SequenceSegment, sequence_segments
 
@@ -247,9 +247,6 @@ def binary_search(index_filename: Path,
 
     # While there are still kmers to search
     while not np.all(finished_search):
-        # Create our working list of kmers to count
-        working_kmers = []
-
         verbose_print(verbose, "Iteration {}".format(iteration_count))
         verbose_print(verbose, "{} k-mer positions remaining".format(
                       np.sum(~finished_search)))
@@ -259,15 +256,12 @@ def binary_search(index_filename: Path,
         # position in the given sequence segment
         kmer_indices = np.nonzero(~finished_search)[0]
 
-        # Create a list of kmers to count on the index
-        for i in kmer_indices:
-            current_kmer_length = current_length_query[i]
-            kmer = sequence_segment.data[i:i+current_kmer_length]
-            working_kmers.append(kmer)
-
         # Get the occurences of the kmers on both strands
         count_list = get_kmer_counts(index_filename,
-                                     working_kmers,
+                                     sequence_segment.data,
+                                     kmer_indices.tolist(),
+                                     current_length_query[
+                                        kmer_indices].tolist(),
                                      num_threads)
 
         # Assert that the number of indices to count and the number of counts
@@ -438,59 +432,59 @@ def linear_search(index_filename: Path,
                       (~finished_search).sum()))
         verbose_print(verbose, "Counting {}-mers".format(kmer_length))
 
-        # Create our working list of kmers to count
-        working_kmers = []
+        # Skip any kmers that contain an ambiguous base
         for i in np.nonzero(~finished_search)[0]:
             # Create the kmer from the sequence segment
             # NB: At the epilogue of the sequence, out of bounds
             # indexing after the end of the data will automatically
             # be truncated by numpy
             kmer = sequence_segment.data[i:i+kmer_length]
+            # TODO: Fix this by only permitted allowed bases in ALLOWED_BASES
             # If it contains an ambiguous base
             if b'N' in kmer:
                 # Ignore it for all longer kmer lengths (i.e. all
                 # future iterations)
                 finished_search[i] = True
-            else:
-                working_kmers.append(kmer)
+
+        kmer_indices = np.nonzero(~finished_search)[0]
 
         # If there are no kmers to count due to ambiguity
-        if not working_kmers:
+        if kmer_indices.size == 0:
             verbose_print(verbose,
-                          "No {}-mers remaining to be found, skipping "
-                          "to next kmer batch".format(kmer_length))
+                          f"No {kmer_length}-mers remaining to be found, "
+                          f"skipping to next kmer batch")
             # Skip to the next kmer batch
             break
         else:
             verbose_print(verbose,
-                          "{} {}-mers remaining to be counted"
-                          .format(len(working_kmers), kmer_length))
+                          f"{kmer_indices.size} {kmer_length}-mers remaining "
+                          f"to be counted")
 
-        # Count the occurences of the kmers on both strands
+        # Count the kmer occurences on the index
         count_list = get_kmer_counts(index_filename,
-                                     working_kmers,
+                                     sequence_segment.data,
+                                     kmer_indices.tolist(),
+                                     [kmer_length]*len(kmer_indices),
                                      num_threads)
-
-        counted_positions = np.nonzero(np.copy(~finished_search))[0]
 
         # Assert that the number of indices to count and the number of counts
         # are equal
-        assert counted_positions.size == count_list.size, \
+        assert kmer_indices.size == count_list.size, \
             "Number of counted positions ({}) and number of counts ({}) " \
-            "do not match".format(len(counted_positions), len(count_list))
+            "do not match".format(len(kmer_indices), len(count_list))
 
-        unique_lengths[counted_positions] = np.where(
+        unique_lengths[kmer_indices] = np.where(
             # Where the count is 1
             (count_list == 1) &
             # And if there is no current unique length recorded
-            (unique_lengths[counted_positions] == 0),
+            (unique_lengths[kmer_indices] == 0),
             # Record the minimum kmer length found if it less than the current
             kmer_length,
             # Otherwise keep the current unique length
-            unique_lengths[counted_positions])
+            unique_lengths[kmer_indices])
 
         # We are finished searching at this position if the count was 1
-        finished_search[counted_positions] = (count_list == 1)
+        finished_search[kmer_indices] = (count_list == 1)
 
         verbose_print(verbose, "{} unique {}-mers found".format(
             np.count_nonzero(unique_lengths == kmer_length), kmer_length))
@@ -499,24 +493,38 @@ def linear_search(index_filename: Path,
 
 
 def get_kmer_counts(index_filename: Path,
-                    kmers: list[bytes],
+                    sequence_data: bytes,
+                    index_list: list[int],
+                    kmer_lengths: list[int],
                     num_threads: int) -> npt.NDArray[np.uint32]:
 
     # Count the occurences of kmers on the forward strand
-    count_list = np.array(count_kmers(
+    count_list = np.array(count_kmers_from_sequence(
                             str(index_filename),
-                            kmers,
+                            sequence_data,
+                            index_list,
+                            kmer_lengths,
                             num_threads),
                           dtype=np.uint32)
 
+    # Count the occurrences of kmers on the reverse complement strand
     # TODO: Add no reverse complement option to skip this to
     # support bisulfite treated kmer counting
     # TODO: Add option for a complement table
-    count_list += np.array(
-      count_kmers(str(index_filename),
-                  [kmer.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
-                   for kmer in kmers],
-                  num_threads), dtype=np.uint32)
+    reverse_complement_sequence = \
+        sequence_data.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+
+    sequence_data_length = len(sequence_data)
+    reverse_index_list = [sequence_data_length - i - kmer_length
+                          for i, kmer_length in zip(index_list, kmer_lengths)]
+
+    count_list += np.array(count_kmers_from_sequence(
+                             str(index_filename),
+                             reverse_complement_sequence,
+                             reverse_index_list,
+                             kmer_lengths,
+                             num_threads),
+                           dtype=np.uint32)
 
     # If any element in the count list is 0
     if np.any(count_list == 0):
@@ -524,8 +532,15 @@ def get_kmer_counts(index_filename: Path,
         # There is also a chance there is a bug in the index
 
         # NB: Get first element of tuple, then first element in numpy array
-        first_kmer_index = (count_list == 0).nonzero()[0][0]
-        first_problem_kmer = kmers[first_kmer_index].decode("utf-8")
+        first_problem_kmer_index = (count_list == 0).nonzero()[0][0]
+
+        problem_sequence_index = index_list[first_problem_kmer_index]
+        problem_sequence_length = kmer_lengths[first_problem_kmer_index]
+
+        first_problem_kmer = sequence_data[
+            problem_sequence_index:
+            problem_sequence_index+problem_sequence_length].decode("utf-8")
+
         raise RuntimeError(f"The following generated k-mer was not found in "
                            f"the index:\n{first_problem_kmer}\n"
                            f"Possibly a mismatch between the sequence and the "
