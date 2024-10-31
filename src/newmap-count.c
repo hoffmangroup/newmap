@@ -38,7 +38,7 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
         return NULL;
 
     if (!PyList_Check(inputKmerList)) {
-        PyErr_SetString(PyExc_TypeError, "Second argument must be a list of kmer byte strings or memoryviews");
+        PyErr_SetString(PyExc_TypeError, "Second argument must be a list of kmer byte strings");
         return NULL;
     }
 
