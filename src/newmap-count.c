@@ -132,6 +132,9 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
     struct AwFmKmerSearchList *searchList =
         awFmCreateKmerSearchList(numKmers);
 
+    // Error value for erroneous size_t conversions from negative python longs
+    const size_t ERROR_VALUE = (size_t)-1;
+
     // Fill the search list with the kmers
     searchList->count = numKmers;
     for(size_t i = 0; i < numKmers; i++) {
@@ -147,11 +150,28 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
           return NULL;
         }
 
+        // NB: Throws an OverflowError if negative when converting to size_t
+        // and returns a (size_t)-1 value. Note size_t is unsigned.
         size_t kmer_index = PyLong_AsSize_t(indexObj);
+        if (kmer_index == ERROR_VALUE &&
+            PyErr_Occurred()) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_IndexError, "All elements of the the index "
+                                              "list must be non-negative integers");
+            return NULL;
+        }
+
         size_t kmer_length = PyLong_AsSize_t(lengthObj);
+        if (kmer_index == ERROR_VALUE &&
+            PyErr_Occurred()) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "All lengths in the length list"
+                                              "list must be non-negative integers");
+            return NULL;
+        }
 
         // TODO: Assert or check that the index + length does not go out of
-        // bounds
+        // bounds to protect against nonsense input and segmentation faults
         searchList->kmerSearchData[i].kmerLength = kmer_length;
         searchList->kmerSearchData[i].kmerString =
             &inputByteSequence[kmer_index];
