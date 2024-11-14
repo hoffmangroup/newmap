@@ -91,27 +91,33 @@ static PyObject* py_count_kmers(PyObject* self, PyObject* args) {
 static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
     const char *indexFileName;
     const char *inputByteSequence;
+    Py_ssize_t inputByteSequenceLength;
     PyObject *inputIndexList;
     PyObject *inputLengthList;
     uint8_t numThreads;
     Py_ssize_t numKmers;
 
-    if (!PyArg_ParseTuple(args, "syOOb",  /* string, read-only bytes-like, object, object, unsigned char */
+    /* string, read-only bytes-like (with length), object, object, unsigned char
+     */
+    if (!PyArg_ParseTuple(args, "sy#OOb",
                       &indexFileName,
                       &inputByteSequence,
+                      &inputByteSequenceLength,
                       &inputIndexList,
                       &inputLengthList,
                       &numThreads))
         return NULL;
 
     if (!PyList_Check(inputIndexList)) {
-        PyErr_SetString(PyExc_TypeError, "Third argument must be a list of integers");
-        return NULL;
+      PyErr_SetString(PyExc_TypeError,
+                      "Third argument must be a list of integers");
+      return NULL;
     }
 
     if (!PyList_Check(inputLengthList)) {
-        PyErr_SetString(PyExc_TypeError, "Fourth argument must be a list of integers");
-        return NULL;
+      PyErr_SetString(PyExc_TypeError,
+                      "Fourth argument must be a list of integers");
+      return NULL;
     }
 
     // Get the number of kmers to search counts for
@@ -119,8 +125,10 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
 
     // Verify the lists are the same size
     if(numKmers != PyList_Size(inputLengthList)){
-        PyErr_SetString(PyExc_ValueError, "Both lists of indices and lengths must be the same length");
-        return NULL;
+      PyErr_SetString(
+          PyExc_ValueError,
+          "Both lists of indices and lengths must be the same length");
+      return NULL;
     }
 
     // Create our index
@@ -145,9 +153,9 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
 
         if (!PyLong_Check(indexObj) ||
             !PyLong_Check(lengthObj)) {
-          PyErr_SetString(PyExc_TypeError, "All elements of the the index and "
-                                           "length lists must be integers");
-          return NULL;
+            PyErr_SetString(PyExc_TypeError, "All elements of the the index and "
+                                             "length lists must be integers");
+            return NULL;
         }
 
         // NB: Throws an OverflowError if negative when converting to size_t
@@ -172,6 +180,14 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
 
         // TODO: Assert or check that the index + length does not go out of
         // bounds to protect against nonsense input and segmentation faults
+        // 0-based index
+        if ((kmer_index + kmer_length) > inputByteSequenceLength) {
+          PyErr_SetString(PyExc_IndexError,
+                          "The sum of the index and length "
+                          "of each k-mer must be less than or equal to the "
+                          "length of the input byte sequence");
+          return NULL;
+        }
         searchList->kmerSearchData[i].kmerLength = kmer_length;
         searchList->kmerSearchData[i].kmerString =
             &inputByteSequence[kmer_index];

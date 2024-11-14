@@ -222,6 +222,34 @@ def binary_search(index_filename: Path,
                          min_kmer_length,
                          initial_search_length)
 
+    # Or if we are the end of our sequence
+    # There is no more lookahead buffer, so the positions at the end within the
+    # max kmer length should have their upper search ranges truncated
+    if sequence_segment.epilogue:
+        num_positions_changed = max_kmer_length - 1
+        upper_length_bound[-num_positions_changed:] = \
+            np.arange(num_positions_changed, 0, -1, dtype=data_type)
+
+        # Recalculate the new midpoint for search lengths
+        # The current query length cannot be larger than the new upper bound
+        # The lower bound may be larger than the the new upper bound
+        current_length_query[-num_positions_changed:] = np.floor(
+            (upper_length_bound[-num_positions_changed:] / 2) +
+            (lower_length_bound[-num_positions_changed:] / 2)
+        ).astype(data_type)
+
+        # Mark positions at the end less that minimum length as finished
+        # NB: May already be marked as finished if they are ambiguous positions
+        finished_search[-num_positions_changed:] = \
+            (upper_length_bound[-num_positions_changed:] < min_kmer_length)
+
+        # If we have an initial search length
+        if initial_search_length:
+            # Use the initial search length if it is less than the new midpoint
+            current_length_query[-num_positions_changed:] = \
+                np.fmin(current_length_query[-num_positions_changed:],
+                        initial_search_length)
+
     # If verbosity is on
     if verbose:
         # Calculate out the number of kmer upper search ranges truncated
