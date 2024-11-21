@@ -93,9 +93,9 @@ def write_unique_counts(fasta_filename: Path,
                 open(UNIQUE_COUNT_FILENAME_FORMAT.format(
                      sequence_segment.id.decode(),
                      unique_count_suffix), "wb").close()
-                # Update the current working sequence id
-                current_sequence_id = sequence_segment.id
 
+                # Print out the summary statistics from the previously
+                # processed chromosome
                 print_summary_statisitcs(verbose,
                                          current_sequence_id,
                                          total_unique_lengths_count,
@@ -103,6 +103,9 @@ def write_unique_counts(fasta_filename: Path,
                                          total_no_unique_lengths_count,
                                          max_length_found,
                                          min_length_found)
+
+                # Update the current working sequence id
+                current_sequence_id = sequence_segment.id
 
                 verbose_print(verbose,
                               "Writing minimum unique lengths for sequence "
