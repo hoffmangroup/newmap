@@ -20,6 +20,7 @@ class TestSequenceBufferIterator(unittest.TestCase):
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'CGCANCAGAGCANCGNCG', sequence_buffer.data)
+        self.assertTrue(sequence_buffer.epilogue)
         self.assertRaises(StopIteration, next, buffer_iter)
 
     def test_sequence_overlap(self):
@@ -28,26 +29,32 @@ class TestSequenceBufferIterator(unittest.TestCase):
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'CGCAN', sequence_buffer.data)
+        self.assertFalse(sequence_buffer.epilogue)
 
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'ANCAG', sequence_buffer.data)
+        self.assertFalse(sequence_buffer.epilogue)
 
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'AGAGC', sequence_buffer.data)
+        self.assertFalse(sequence_buffer.epilogue)
 
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'GCANC', sequence_buffer.data)
+        self.assertFalse(sequence_buffer.epilogue)
 
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'NCGNC', sequence_buffer.data)
+        self.assertFalse(sequence_buffer.epilogue)
 
         sequence_buffer = next(buffer_iter)
         self.assertEqual(b'chr2', sequence_buffer.id)
         self.assertEqual(b'NCG', sequence_buffer.data)
+        self.assertTrue(sequence_buffer.epilogue)
 
         self.assertRaises(StopIteration, next, buffer_iter)
 
@@ -160,3 +167,23 @@ class TestSequenceBufferIterator(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, buffer_iter)
         fasta_file.close()
+
+    def test_sizes_and_epilogues(self):
+        buffer_iter = sequence_segments(self.genome_fasta_file, 20, 0)
+
+        sequence_buffer = next(buffer_iter)
+        self.assertEqual(b'chr1', sequence_buffer.id)
+        self.assertEqual(len(sequence_buffer.data), 20)
+        self.assertTrue(sequence_buffer.epilogue)
+
+        sequence_buffer = next(buffer_iter)
+        self.assertEqual(b'chr2', sequence_buffer.id)
+        self.assertEqual(len(sequence_buffer.data), 20)
+        self.assertFalse(sequence_buffer.epilogue)
+
+        sequence_buffer = next(buffer_iter)
+        self.assertEqual(b'chr2', sequence_buffer.id)
+        self.assertEqual(len(sequence_buffer.data), 10)
+        self.assertTrue(sequence_buffer.epilogue)
+
+        self.assertRaises(StopIteration, next, buffer_iter)
