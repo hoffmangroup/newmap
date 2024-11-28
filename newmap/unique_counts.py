@@ -12,7 +12,7 @@ from newmap.fasta import SequenceSegment, sequence_segments
 KMER_RANGE_SEPARATOR = ":"
 SEQUENCE_ID_SEPARATOR = ","
 
-COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGT', b'TGCA')
+COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGTacgt', b'TGCAtgca')
 ALLOWED_BASES = b'ACGTactg'
 UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.{}"
 
