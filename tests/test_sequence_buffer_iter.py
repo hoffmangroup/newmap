@@ -187,3 +187,7 @@ class TestSequenceBufferIterator(unittest.TestCase):
         self.assertTrue(sequence_buffer.epilogue)
 
         self.assertRaises(StopIteration, next, buffer_iter)
+
+
+if __name__ == "__main__":
+    unittest.main()

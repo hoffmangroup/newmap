@@ -22,16 +22,29 @@ EXPECTED_CHR2_COUNTS = [10, 10, 9, 8, 7, 6, 5, 4, 4, 4, 0, 0, 0, 0,
 
 
 class TestCountKmers(unittest.TestCase):
-    def setUp(self):
-        self.genome_index_filename = NamedTemporaryFile(mode="w").name
-        self.fasta_filename = str(TEST_DATA_PATH / 'genome.fa')
-        generate_fm_index(self.fasta_filename,
-                          self.genome_index_filename,
+    genome_index_file = NamedTemporaryFile(mode="w")
+    genome_index_filename = genome_index_file.name
+    fasta_filename = str(TEST_DATA_PATH / 'genome.fa')
+    num_threads = 1
+
+    @classmethod
+    def setUpClass(cls):
+        generate_fm_index(cls.fasta_filename,
+                          cls.genome_index_filename,
                           DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
                           DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
-        self.num_threads = 1
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.genome_index_file.close()
 
     def test_binary_search(self):
+        self.search(use_binary_search=True)
+
+    def test_linear_search(self):
+        self.search(use_binary_search=False)
+
+    def search(self, use_binary_search):
         write_unique_counts(Path(self.fasta_filename),
                             Path(self.genome_index_filename),
                             15,  # Batch size
@@ -40,7 +53,7 @@ class TestCountKmers(unittest.TestCase):
                             [],  # Include chr ids
                             [],  # Exclude chr ids
                             self.num_threads,
-                            use_binary_search=True)
+                            use_binary_search)
 
         # Check the results in chr1.unique.uint8 and chr2.unique.uint8
         chr1_results = np.fromfile('chr1.unique.uint8', dtype=np.uint8)
@@ -51,3 +64,7 @@ class TestCountKmers(unittest.TestCase):
 
         self.assertTrue(np.array_equal(chr1_results, EXPECTED_CHR1_COUNTS))
         self.assertTrue(np.array_equal(chr2_results, EXPECTED_CHR2_COUNTS))
+
+
+if __name__ == '__main__':
+    unittest.main()

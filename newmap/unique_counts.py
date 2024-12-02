@@ -463,7 +463,9 @@ def linear_search(index_filename: Path,
                       (~finished_search).sum()))
         verbose_print(verbose, "Counting {}-mers".format(kmer_length))
 
-        # Skip any kmers that contain an ambiguous base
+        max_kmer_query_lengths = []
+
+        # For every position that does not have an ambiguous base
         for i in np.nonzero(~finished_search)[0]:
             # Create the kmer from the sequence segment
             # NB: At the epilogue of the sequence, out of bounds
@@ -476,6 +478,10 @@ def linear_search(index_filename: Path,
                 # Ignore it for all longer kmer lengths (i.e. all
                 # future iterations)
                 finished_search[i] = True
+            # Otherwise:
+            else:
+                # Record the length of this k-mer
+                max_kmer_query_lengths.append(len(kmer))
 
         kmer_indices = np.nonzero(~finished_search)[0]
 
@@ -495,7 +501,7 @@ def linear_search(index_filename: Path,
         count_list = get_kmer_counts(index_filename,
                                      sequence_segment.data,
                                      kmer_indices.tolist(),
-                                     [kmer_length]*len(kmer_indices),
+                                     max_kmer_query_lengths,
                                      num_threads)
 
         # Assert that the number of indices to count and the number of counts
