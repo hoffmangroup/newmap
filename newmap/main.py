@@ -154,8 +154,9 @@ def parse_subcommands():
         func=unique_counts_conversion.main)
 
     generate_mappability_parser.add_argument(
-        "unique_count_file",
-        help="Unique count file to convert to bed file")
+        "unique_count_files",
+        nargs="+",  # NB: One or more unique files
+        help="One or more unique count files to convert to mappability files")
 
     generate_mappability_parser.add_argument(
         "--kmer-length", "-k",

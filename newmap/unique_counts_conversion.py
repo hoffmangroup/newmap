@@ -97,12 +97,11 @@ def write_multi_read_wig(wig_file: TextIO,
         wig_file.write("{}\n".format(value))
 
 
-def main(args):
-    unique_count_filename = Path(args.unique_count_file)
-    kmer_length = args.kmer_length
-    single_read_bed_filename = args.single_read_bed_file
-    multi_read_wig_filename = args.multi_read_wig_file
-    verbose = args.verbose
+def write_mappability_files(unique_count_filenames: list[Path],
+                            kmer_length: int,
+                            single_read_bed_filename: str,  # Might be stdout
+                            multi_read_wig_filename: str,  # Might be stdout
+                            verbose: bool):
 
     # Error if both single-read and multi-read output files are standard output
     if (single_read_bed_filename == STDOUT_FILENAME and
@@ -114,70 +113,91 @@ def main(args):
           not multi_read_wig_filename):
         raise ValueError("Must specify at least one output file")
 
-    # Get the chromosome name from the unique length filename
-    # NB: Assume the chromosome name is the the entire string preceding the
-    # ".unique*" part of the unique_count_filename (may contain periods)
-    file_basename = unique_count_filename.name
-    chr_name = \
-        file_basename[:file_basename.find(CHROMOSOME_FILENAME_DELIMITER)]
+    # For every unique length file specified
+    for unique_count_filename in unique_count_filenames:
+        # Get the chromosome name from the unique length filename
+        # NB: Assume the chromosome name is the the entire string preceding the
+        # ".unique*" part of the unique_count_filename (may contain periods)
+        file_basename = unique_count_filename.name
+        chr_name = \
+            file_basename[:file_basename.find(CHROMOSOME_FILENAME_DELIMITER)]
 
-    # Get the data type from the unique length filename suffix
-    data_type_string = unique_count_filename.suffix
+        # Get the data type from the unique length filename suffix
+        data_type_string = unique_count_filename.suffix
 
-    if data_type_string == ".uint8":
-        data_type = np.uint8
-    elif data_type_string == ".uint16":
-        data_type = np.uint16
-    elif data_type_string == ".uint32":
-        data_type = np.uint32
-    else:
-        raise ValueError(f"Unknown extension on unique length file: "
-                         f"\"{data_type_string}\"")
-
-    # NB: The single-read mappability is defined for the entire sequence where
-    # a uniquely mappable k-mer would cover. So if a k-mer is uniquely mappable
-    # starting at position i, then the single read mappability would be 1 for
-    # all positions i to i + kmer_length - 1
-    # It follows that the multi-read mappability covers the same positions as
-    # the single-read, so any non-zero value would be considered single-read
-    # mappable
-    verbose_print(verbose,
-                  f"Calculating mappability regions from minimum unique k-mer "
-                  f"lengths in file: {unique_count_filename}")
-
-    multi_read_mappability = create_multiread_mappability_from_unique_file(
-                             unique_count_filename,
-                             kmer_length,
-                             data_type)  # type: ignore
-
-    verbose_print(verbose, "Chromosome size:")
-    verbose_print(verbose,
-                  "{}\t{}".format(chr_name, multi_read_mappability.shape[0]))
-
-    if single_read_bed_filename:
-        verbose_print(verbose, "Writing out single-read mappability regions")
-
-        if single_read_bed_filename == STDOUT_FILENAME:
-            write_single_read_bed(sys.stdout,
-                                  kmer_length,
-                                  multi_read_mappability,
-                                  chr_name)
+        if data_type_string == ".uint8":
+            data_type = np.uint8
+        elif data_type_string == ".uint16":
+            data_type = np.uint16
+        elif data_type_string == ".uint32":
+            data_type = np.uint32
         else:
-            with open(single_read_bed_filename, "w") as single_read_bed_file:
-                write_single_read_bed(single_read_bed_file,
+            raise ValueError(f"Unknown extension on unique length file: "
+                             f"\"{data_type_string}\"")
+
+        # NB: The single-read mappability is defined for the entire sequence
+        # where a uniquely mappable k-mer would cover. So if a k-mer is
+        # uniquely mappable starting at position i, then the single read
+        # mappability would be 1 for all positions i to i + kmer_length - 1
+        # It follows that the multi-read mappability covers the same positions
+        # as the single-read, so any non-zero value would be considered
+        # single-read mappable
+        verbose_print(verbose, f"Calculating mappability regions from minimum "
+                               f"unique k-mer lengths in file: "
+                               f"{unique_count_filename}")
+
+        multi_read_mappability = create_multiread_mappability_from_unique_file(
+                                 unique_count_filename,
+                                 kmer_length,
+                                 data_type)  # type: ignore
+
+        verbose_print(verbose, "Chromosome size:")
+        verbose_print(verbose,
+                      "{}\t{}".format(chr_name,
+                                      multi_read_mappability.shape[0]))
+
+        if single_read_bed_filename:
+            verbose_print(verbose, f"Appending single-read mappability "
+                                   f"regions to {single_read_bed_filename}")
+
+            if single_read_bed_filename == STDOUT_FILENAME:
+                write_single_read_bed(sys.stdout,
                                       kmer_length,
                                       multi_read_mappability,
                                       chr_name)
+            else:
+                with open(single_read_bed_filename, "a") as \
+                          single_read_bed_file:
+                    write_single_read_bed(single_read_bed_file,
+                                          kmer_length,
+                                          multi_read_mappability,
+                                          chr_name)
 
-    if multi_read_wig_filename:
-        verbose_print(verbose, "Writing out multi-read mappability regions")
+        if multi_read_wig_filename:
+            verbose_print(verbose, f"Appending multi-read mappability regions"
+                                   f" to {multi_read_wig_filename}")
 
-        if multi_read_wig_filename == STDOUT_FILENAME:
-            write_multi_read_wig(sys.stdout,
-                                 multi_read_mappability,
-                                 chr_name)
-        else:
-            with open(multi_read_wig_filename, "w") as multi_read_wig_file:
-                write_multi_read_wig(multi_read_wig_file,
+            if multi_read_wig_filename == STDOUT_FILENAME:
+                write_multi_read_wig(sys.stdout,
                                      multi_read_mappability,
                                      chr_name)
+            else:
+                with open(multi_read_wig_filename, "a") as multi_read_wig_file:
+                    write_multi_read_wig(multi_read_wig_file,
+                                         multi_read_mappability,
+                                         chr_name)
+
+
+def main(args):
+    unique_count_filenames = [Path(filename) for filename in
+                              args.unique_count_files]
+    kmer_length = args.kmer_length
+    single_read_bed_filename = args.single_read_bed_file
+    multi_read_wig_filename = args.multi_read_wig_file
+    verbose = args.verbose
+
+    write_mappability_files(unique_count_filenames,
+                            kmer_length,
+                            single_read_bed_filename,
+                            multi_read_wig_filename,
+                            verbose)

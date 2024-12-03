@@ -148,7 +148,7 @@ with some diminishing returns afterwards.
 --------------------
 generate-mappability
 --------------------
-Generates mappability files from a given ``unique`` file (see
+Generates mappability files from one or more given ``unique`` files (see
 :ref:`unique-file-format`). There are two types of mappability files that can
 be generated:
 
@@ -166,6 +166,13 @@ Options
 .. note::
 
     Only ``single-read-bed-file`` or ``multi-read-wig-file`` can output to ``stdout`` when both are specified on the command line.
+
+Positional Arguments
+--------------------
+- `unique_count_files`: One or more unique count files to generate mappability
+  from. The resulting mappability from each unique file will be appended to
+  files specified by the ``single-read-bed-file`` and ``multi-read-wig-file``
+  options.
 
 
 Mappability datasets
@@ -202,4 +209,4 @@ Example:
 
 .. code-block:: console
 
-    $ newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed chr1.unique.uint8
+    $ newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed chr*.unique.uint8
