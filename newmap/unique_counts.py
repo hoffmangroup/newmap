@@ -49,6 +49,10 @@ def write_unique_counts(fasta_filename: Path,
                       ceil(log2(max_kmer_length - min_kmer_length) + 1),
                       min_kmer_length, max_kmer_length))
 
+    # Set a flag to ensure that some sequence was processed in case the include
+    # or exclude sequence IDs are too strict
+    sequence_processed = False
+
     # NB: We open the file in binary mode to get read-only bytes
     with optional_gzip_open(fasta_filename, "rb") as fasta_file:
         # Allow a lookahead on the last kmer to include the final dinucleotide
@@ -87,6 +91,10 @@ def write_unique_counts(fasta_filename: Path,
                        (sequence_segment.id in exclude_sequence_ids)):
                         # Skip the current buffer
                         continue
+                    # Otherwise
+                    else:
+                        # This sequence will be processed
+                        sequence_processed = True
 
                 # Otherwise
                 # Truncate any existing file for the new sequence
@@ -173,6 +181,21 @@ def write_unique_counts(fasta_filename: Path,
                                  total_no_unique_lengths_count,
                                  max_length_found,
                                  min_length_found)
+
+        # If somehow we skipped all the sequences
+        if not sequence_processed:
+            # Print out a warning
+            # If include sequences were used
+            if include_sequence_ids:
+                # None of the included sequences were found
+                raise ValueError("None of the included sequences were found: "
+                                 f"{include_sequence_ids}")
+            # If excluded sequences were used
+            elif exclude_sequence_ids:
+                # Excluded sequences removed all possilibities
+                raise ValueError("The excluded sequences were too strict and "
+                                 "nothing was processed: "
+                                 f"{exclude_sequence_ids}")
 
 
 def binary_search(index_filename: Path,
