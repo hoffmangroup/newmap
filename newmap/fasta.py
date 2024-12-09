@@ -42,10 +42,6 @@ def sequence_segments(
 
     sequences = []  # working list of sequences
 
-    # import debugpy
-    # debugpy.listen(5678)
-    # debugpy.wait_for_client()
-    # debugpy.breakpoint()
     # For every line in the fasta file
     for line in fasta_file:
         line = line.rstrip()  # Remove trailing newline
