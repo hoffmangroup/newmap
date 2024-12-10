@@ -218,8 +218,8 @@ def binary_search(index_filename: Path,
 
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
-    finished_search = get_ambiguous_positions(sequence_segment,
-                                              num_kmers)
+    finished_search = get_ambiguous_sequence_mask(sequence_segment,
+                                                  num_kmers)
 
     # Print out the number of ambiguous positions skipped
     ambiguous_positions_skipped = finished_search.sum()
@@ -470,8 +470,8 @@ def linear_search(index_filename: Path,
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
-    finished_search = get_ambiguous_positions(sequence_segment,
-                                              num_kmers)
+    finished_search = get_ambiguous_sequence_mask(sequence_segment,
+                                                  num_kmers)
 
     ambiguous_positions_skipped = finished_search.sum()
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
@@ -626,8 +626,8 @@ def get_num_kmers(sequence_segment: SequenceSegment,
         return sequence_length - lookahead_length
 
 
-def get_ambiguous_positions(sequence_segment: SequenceSegment,
-                            num_positions: int):
+def get_ambiguous_sequence_mask(sequence_segment: SequenceSegment,
+                                num_positions: int):
     """Returns a boolean array of ambiguous positions in a sequence segment
        Where True is an ambiguous position and False is a non-ambiguous"""
 
@@ -647,7 +647,7 @@ def get_ambiguous_positions(sequence_segment: SequenceSegment,
         # Set this position to non-ambiguous
         allowed_positions |= (sequence_buffer == base)
 
-    # return ambiguous_array_positions
+    # Return mask
     return ~allowed_positions
 
 
