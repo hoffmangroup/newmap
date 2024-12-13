@@ -209,13 +209,6 @@ def binary_search(index_filename: Path,
 
     num_kmers = get_num_kmers(sequence_segment, max_kmer_length)
 
-    # NB: Floor division for midpoint
-    # NB: Avoid an overflow error by dividing first before sum
-    if initial_search_length:
-        starting_kmer_length = initial_search_length
-    else:
-        starting_kmer_length = (max_kmer_length // 2) + (min_kmer_length // 2)
-
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     finished_search = get_ambiguous_sequence_mask(sequence_segment,
@@ -226,10 +219,6 @@ def binary_search(index_filename: Path,
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
                   "positions")
 
-    # Track current kmer query length
-    current_length_query = np.full(num_kmers, starting_kmer_length,
-                                   dtype=data_type)
-
     # Track minimum and maximum kmer lengths for each position
     # NB: Inclusive bounds for search lengths
     lower_length_bound = np.full(num_kmers, min_kmer_length, dtype=data_type)
@@ -238,43 +227,28 @@ def binary_search(index_filename: Path,
     # The maximum length in our search query range
     upper_length_bound = np.full(num_kmers, max_kmer_length, dtype=data_type)
 
-    # Or the maximum length that does not overlap with an ambiguous base
-    # NB: Modifies finished_search with positions that are too short
-    update_search_bounds(upper_length_bound,
-                         lower_length_bound,
-                         current_length_query,
-                         finished_search,
-                         max_kmer_length,
-                         min_kmer_length,
-                         initial_search_length)
+    # Update the upper search bounds based on ambiguous bases in the sequence
+    # and sequence length
+    update_upper_search_bound(upper_length_bound,
+                              finished_search,
+                              max_kmer_length,
+                              len(sequence_segment.data))
 
-    # Or if we are the end of our sequence
-    # There is no more lookahead buffer, so the positions at the end within the
-    # max kmer length should have their upper search ranges truncated
-    if sequence_segment.epilogue:
-        num_positions_changed = max_kmer_length - 1
-        upper_length_bound[-num_positions_changed:] = \
-            np.arange(num_positions_changed, 0, -1, dtype=data_type)
+    # Create the current length query as the midpoint between the lower and
+    # upper search bounds
+    current_length_query = np.floor(
+        (upper_length_bound / 2) + (lower_length_bound / 2)
+    ).astype(data_type)
 
-        # Recalculate the new midpoint for search lengths
-        # The current query length cannot be larger than the new upper bound
-        # The lower bound may be larger than the the new upper bound
-        current_length_query[-num_positions_changed:] = np.floor(
-            (upper_length_bound[-num_positions_changed:] / 2) +
-            (lower_length_bound[-num_positions_changed:] / 2)
-        ).astype(data_type)
+    # If there was an initial search length specified
+    if initial_search_length:
+        # Set all current search lengths to at most the initial search length
+        current_length_query[current_length_query > initial_search_length] = \
+            initial_search_length
 
-        # Mark positions at the end less that minimum length as finished
-        # NB: May already be marked as finished if they are ambiguous positions
-        finished_search[-num_positions_changed:] = \
-            (upper_length_bound[-num_positions_changed:] < min_kmer_length)
-
-        # If we have an initial search length
-        if initial_search_length:
-            # Use the initial search length if it is less than the new midpoint
-            current_length_query[-num_positions_changed:] = \
-                np.fmin(current_length_query[-num_positions_changed:],
-                        initial_search_length)
+    # Mark any positions whose upper search bound is less than the minimum
+    # search length as complete
+    finished_search[upper_length_bound < min_kmer_length] = True
 
     # If verbosity is on
     if verbose:
@@ -386,78 +360,6 @@ def binary_search(index_filename: Path,
                   f"Finished searching in {iteration_count-1} iterations")
 
     return unique_lengths, ambiguous_positions_skipped
-
-
-def update_search_bounds(upper_length_bound_array: npt.NDArray[np.uint],
-                         lower_length_bound_array: npt.NDArray[np.uint],
-                         current_length_query_array: npt.NDArray[np.uint],
-                         finished_search_array: npt.NDArray[np.bool_],
-                         max_kmer_length,
-                         min_kmer_length,
-                         initial_search_length):
-    """Modifies in the input arrays to update the upper search bound based on
-    ambiguous bases in the sequence data.
-    Updates the query lengths between the new maximum upper bound
-    Marks positions with less than the minimum kmer length as finished
-    """
-
-    data_type = current_length_query_array.dtype
-
-    # NB: Assume the finished search array is all the ambigiuous positions at
-    # this point
-    # NB: The prepend of np.nan is to ensure the first position is always not
-    # counted and it does an implicit conversion to bool to float conversion
-    ambiguous_starting_positions = \
-        np.where(np.diff(finished_search_array, prepend=np.nan) > 0)[0]
-    max_lengths_to_ambiguous_position = \
-        np.arange(max_kmer_length-1, 0, -1, dtype=data_type)
-
-    # For every ambigious starting position in reverse order
-    for i in ambiguous_starting_positions[::-1]:
-        # From (max kmer length - 1) positions before this position:
-
-        # Skip if the ambiguous position is at position 0
-        if i == 0:
-            continue
-
-        # Calculate the starting position where the upper length bounds will
-        # change
-        # NB: Account for the case where our ambigious position is less than
-        # the max kmer length - 1
-        upper_length_change_position = \
-            max(0, i - (max_lengths_to_ambiguous_position.size))
-
-        # This value is different from the max kmer length (-1) if the
-        # ambiguous position is less than the max kmer length - 1 (near the
-        # start of the arrays)
-        num_upper_length_changes = i - upper_length_change_position
-        upper_length_bound_array[upper_length_change_position:i] = \
-            max_lengths_to_ambiguous_position[-num_upper_length_changes:]
-
-        # Calculate the new query length as the midpoint between the updated
-        # upper and the current lower bounds
-        new_initial_search_array = np.floor(
-            (upper_length_bound_array[upper_length_change_position:i] / 2) +
-            (lower_length_bound_array[upper_length_change_position:i] /
-             2)).astype(data_type)
-
-        # If we have an initial search length
-        if initial_search_length:
-            # Use the initial search length if it is less than the new midpoint
-            new_initial_search_array = np.fmin(new_initial_search_array,
-                                               initial_search_length)
-
-        current_length_query_array[upper_length_change_position:i] = \
-            new_initial_search_array
-
-        # Calculate the starting position where the minimum length bounds will
-        # change
-        min_length_change_position = \
-            max(0, i - (min_kmer_length - 1))
-        # Mark positions with values of (min length - 1) to 1 as finished
-        finished_search_array[min_length_change_position:i] = \
-            (upper_length_bound_array[min_length_change_position:i] <
-             min_kmer_length)
 
 
 def linear_search(index_filename: Path,
@@ -649,6 +551,114 @@ def get_ambiguous_sequence_mask(sequence_segment: SequenceSegment,
 
     # Return mask
     return ~allowed_positions
+
+
+def update_upper_search_bound(upper_search_bound: npt.NDArray,
+                              ambiguity_mask: npt.NDArray,
+                              max_search_length: int,
+                              sequence_buffer_length: int):
+    """Modifies upper_search_bound to the maximum k-mer search length possible
+    at each position based on the ambiguity mask and start and end of the
+    working sequence positions"""
+
+    # We assume that there is at most (max_search_length - 1) positions after
+    # the length of the ambiguity mask to allow searching at the final
+    # position at the maximum length
+    excess_buffer_length = sequence_buffer_length - ambiguity_mask.size
+    assert excess_buffer_length < max_search_length, \
+        "Excess sequence buffer length is greater than the maximum search " \
+        "length"
+
+    # If all positions non-ambiguous
+    # NB: Likely the most common case
+    if (~ambiguity_mask).all():
+        # If there is not enough sequence buffer to search at the maximum
+        # NB: There is a possibility that the maximum search range is larger
+        # than our entire buffer
+        if excess_buffer_length < (max_search_length - 1):
+            # Set the last position's maximum search length to the excess
+            # buffer length and all positions before it increasing to the
+            # maximum search length
+            start_value = max_search_length - 1
+            end_value = excess_buffer_length
+            new_values = np.arange(start_value, end_value, -1)
+            assign_remaining_array_values(upper_search_bound, new_values)
+    # Else if all positions are ambiguous
+    elif ambiguity_mask.all():
+        # Nothing to do
+        return
+    # Otherwise there is a mix of ambiguous and non-ambiguous positions
+    else:
+        # Find the 0-based start-inclusive and end-exclusive intervals (for
+        # indexing) of non-ambiguous areas including the start and end in the
+        # interval list
+
+        # Compare the ambiguity list with a shifted version of itself
+        left_shift = ambiguity_mask[1:]
+        reference_mask = ambiguity_mask[:-1]  # NB: Keep same dimensions
+
+        # Where our reference mask is True but left shift is False
+        # We have the start of an non-ambiguous region
+        # NB: Add 1 due to the shift
+        start_indices = np.where(reference_mask & ~left_shift)[0] + 1
+
+        # Where our reference mask is False but left shift is True
+        # We have the end of an non-ambiguous region
+        end_indices = np.where(~reference_mask & left_shift)[0] + 1
+
+        # If we have end indices
+        if end_indices.size:
+            # If the first non-ambiguous region has an ending before the first
+            # start position
+            # Or if there is no starting index
+            if not start_indices.size or \
+              end_indices[0] < start_indices[0]:
+                # The first start position must be at the beginning (0)
+                start_indices = np.insert(start_indices, 0, 0)
+
+        # Figure out if we have reached end of the current buffer
+        reached_end_of_buffer = False
+
+        # If we have start indices
+        if start_indices.size:
+            # If the last non-ambiguous start is after the last end position
+            # Or if there is no ending index
+            if not end_indices.size or \
+               start_indices[-1] > end_indices[-1]:
+                # The last end position must be at the end
+                end_indices = np.append(end_indices, ambiguity_mask.size)
+                # We have reached the end of the buffer
+                reached_end_of_buffer = True
+
+        # Iterate over each start and end non-ambiguous interval
+        for start, end in zip(start_indices, end_indices):
+            # If we are the on the last interval and are at the end of the
+            # buffer
+            end_value = 0  # NB: Exclusive in np.arange, will go down to 1
+            if end == end_indices[-1] and \
+               reached_end_of_buffer:
+                # Update the max search length at the end of this interval
+                end_value = excess_buffer_length
+
+            non_ambiguous_interval = upper_search_bound[start:end]
+
+            # A descending array from max search length to our largest possible
+            # max search length
+            start_value = max_search_length - 1
+            new_values = np.arange(max_search_length - 1, end_value, -1)
+
+            # Assign the new values to the end of the non-ambiguous interval
+            assign_remaining_array_values(non_ambiguous_interval, new_values)
+
+
+def assign_remaining_array_values(input_array: npt.NDArray,
+                                  new_values: npt.NDArray):
+    """Modifies the input array so the last n values are assigned the contents
+    of the new values array regardless of dimension of either array."""
+    num_values = min(new_values.size, input_array.size)
+    # Only update if there is anything to assign
+    if num_values > 0:
+        input_array[-num_values:] = new_values[-num_values:]
 
 
 def print_summary_statisitcs(verbose: bool,
