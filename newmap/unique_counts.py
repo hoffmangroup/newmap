@@ -260,8 +260,6 @@ def binary_search(index_filename: Path,
                                "search ranges truncated due to ambiguity")
 
         # Calculate the number of of kmers too short to be counted
-        # NB: The upper_search_bounds function updates the finished_search
-        # array with the positions that are too short to be counted
         short_kmers_discarded_count = (finished_search.sum() -
                                        ambiguous_positions_skipped)
         # And print it out
