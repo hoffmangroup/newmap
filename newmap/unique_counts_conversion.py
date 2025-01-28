@@ -46,45 +46,38 @@ def create_multiread_mappability_from_unique_file(
     return multiread_mappability
 
 
-def write_single_read_bed(bed_file: TextIO,
+def write_single_read_bed(bed_file: BinaryIO,
                           kmer_length: int,
                           multi_read_mappability: npt.NDArray[np.float64],
                           chr_name: str):
     # NB: Score is only either 0 or 1
     single_read_mappability = np.where(multi_read_mappability > 0.0, 1, 0)
 
-    current_start = 0  # NB: Always 0-based, always start of current interval
-    current_position = 0  # NB: Always 0-based, current position in iteration
-    current_value = single_read_mappability[current_start]
+    # Create a mask marking "True" when were are on a new interval
+    change_mask = np.concatenate(
+         ([True],  # First value is assumed to be a new set
+          single_read_mappability[1:] !=  # Shift and compare
+          single_read_mappability[:-1]))
 
-    # For every value in the single-read mappability array
-    # NB: current_position is effectively the current 0-based end position
-    for current_position, value in enumerate(single_read_mappability):
-        # If the current value is different from the previous
-        if value != current_value:
-            # We are on the start of a new interval
-            # Write out the previous interval
-            # NB: End coordinate is 1-based, so the previous end coordinate
-            # is the current 0-based position
-            previous_end = current_position
-            bed_file.write(BED_FILE_LINE_FORMAT.format(chr_name,
-                                                       current_start,
-                                                       previous_end,
-                                                       kmer_length,
-                                                       current_value))
+    # Get indices where changes in values occur (from 1 to 0 or vice-versa)
+    change_start_indices = np.nonzero(change_mask)[0]
 
-            # Update new interval values
-            current_start = current_position
-            current_value = value
+    # Get the length of each interval (difference in change indices)
+    interval_lengths = np.diff(
+        np.append(change_start_indices, single_read_mappability.size)
+    )
 
-    # Write out the remaining interval if it exists
-    if (current_position - current_start) > 0:
-        bed_file.write(BED_FILE_LINE_FORMAT.format(chr_name,
-                                                   current_start,
-                                                   # NB: Convert to 1-based end
-                                                   current_position + 1,
-                                                   kmer_length,
-                                                   current_value))
+    # Write out entire set of formatted byte strings
+    # BED_FILE_LINE_FORMAT = "{}\t{}\t{}\tk{}\t{}\t.\n"
+    bed_file.write(b''.join(
+        [f"{chr_name}\t"
+         f"{index}\t"
+         f"{index+length}\t"
+         f"k{kmer_length}\t"
+         f"{single_read_mappability[index]}"
+         "\t.\n".encode()
+         for index, length in zip(change_start_indices, interval_lengths)]
+    ))
 
 
 def write_multi_read_wig(wig_file: BinaryIO,
@@ -163,12 +156,12 @@ def write_mappability_files(unique_count_filenames: list[Path],
                                    f"regions to {single_read_bed_filename}")
 
             if single_read_bed_filename == STDOUT_FILENAME:
-                write_single_read_bed(sys.stdout,
+                write_single_read_bed(sys.stdout.buffer,
                                       kmer_length,
                                       multi_read_mappability,
                                       chr_name)
             else:
-                with open(single_read_bed_filename, "a") as \
+                with open(single_read_bed_filename, "ab") as \
                           single_read_bed_file:
                     write_single_read_bed(single_read_bed_file,
                                           kmer_length,
