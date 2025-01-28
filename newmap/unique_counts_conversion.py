@@ -1,6 +1,6 @@
 from pathlib import Path
 import sys
-from typing import TextIO, Union
+from typing import BinaryIO, Union
 
 from newmap.util import verbose_print
 
@@ -87,14 +87,16 @@ def write_single_read_bed(bed_file: TextIO,
                                                    current_value))
 
 
-def write_multi_read_wig(wig_file: TextIO,
+def write_multi_read_wig(wig_file: BinaryIO,
                          multi_read_mappability: npt.NDArray[np.float64],
                          chr_name: str):
 
     # Write out the fixedStep declaration
-    wig_file.write(WIG_FIXED_STEP_DECLARATION_FORMAT.format(chr_name, 1))
-    for value in multi_read_mappability:
-        wig_file.write("{}\n".format(value))
+    wig_file.write(WIG_FIXED_STEP_DECLARATION_FORMAT
+                   .format(chr_name, 1)
+                   .encode())
+    wig_file.write(b''.join(multi_read_mappability.astype(bytes) + b'\n'))
+    wig_file.flush()
 
 
 def write_mappability_files(unique_count_filenames: list[Path],
@@ -178,11 +180,12 @@ def write_mappability_files(unique_count_filenames: list[Path],
                                    f" to {multi_read_wig_filename}")
 
             if multi_read_wig_filename == STDOUT_FILENAME:
-                write_multi_read_wig(sys.stdout,
+                write_multi_read_wig(sys.stdout.buffer,
                                      multi_read_mappability,
                                      chr_name)
             else:
-                with open(multi_read_wig_filename, "a") as multi_read_wig_file:
+                with open(multi_read_wig_filename, "ab") as \
+                          multi_read_wig_file:
                     write_multi_read_wig(multi_read_wig_file,
                                          multi_read_mappability,
                                          chr_name)
