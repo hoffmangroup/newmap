@@ -3,6 +3,7 @@ from importlib.metadata import version
 import sys
 
 from newmap import generate_index, unique_counts, unique_counts_conversion
+from newmap.unique_counts_conversion import STDOUT_FILENAME
 
 # Will throw PackagfeNotFoundError if package is not installed
 __version__ = version("newmap")
@@ -168,14 +169,14 @@ def parse_subcommands():
     # Add (non-positional) arguments for single-read bed file output
     generate_mappability_parser.add_argument(
         "--single-read-bed-file", "-s",
-        help="Filename for single-read mappability BED file output. Use '-' "
-             "for standard output.")
+        help="Filename for single-read mappability BED file output. Use '{}' "
+             "for standard output.".format(STDOUT_FILENAME))
 
     # Add (non-positional) arguments for multi-read wiggle file output
     generate_mappability_parser.add_argument(
         "--multi-read-wig-file", "-m",
-        help="Filename for multi-read mappability WIG file output. Use '-' "
-             "for standard output.")
+        help="Filename for multi-read mappability WIG file output. Use '{}' "
+             "for standard output.".format(STDOUT_FILENAME))
 
     generate_mappability_parser.add_argument(
         "--verbose",

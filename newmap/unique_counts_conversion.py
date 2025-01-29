@@ -8,15 +8,13 @@ import numpy as np
 import numpy.typing as npt
 
 
-DEFAULT_KMER_SIZE = 24
+STDOUT_FILENAME = "-"
 CHROMOSOME_FILENAME_DELIMITER = ".unique"
 
 # chr_name, start, end, k-mer length, value
 BED_FILE_LINE_FORMAT = "{}\t{}\t{}\tk{}\t{}\t.\n"
 WIG_FIXED_STEP_DECLARATION_FORMAT = \
     "fixedStep chrom={} start={} step=1 span=1\n"
-
-STDOUT_FILENAME = "-"
 
 
 def create_multiread_mappability_from_unique_file(
