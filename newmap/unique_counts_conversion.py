@@ -25,22 +25,26 @@ def create_multiread_mappability_from_unique_file(
     # Read the unique k-mer lengths from the unique length file
     unique_kmer_lengths = np.fromfile(str(unique_lengths_filename),
                                       dtype=data_type)
-    # Create a boolean array of all values that are not 0 and less than or
-    # equal to the k-mer length
-    unique_mappability = np.logical_and(unique_kmer_lengths <= kmer_length,
-                                        unique_kmer_lengths != 0)
 
-    # Create a zero-array of length of the unique length chromosome file
-    multiread_mappability = np.zeros(len(unique_mappability), dtype=np.float64)
+    multiread_mappability = np.zeros(unique_kmer_lengths.size)
 
-    # For every unique k-mer for this length
-    unique_mappability_indicies = unique_mappability.nonzero()[0]
-    for i in unique_mappability_indicies:
-        # Add 1 to the multiread mappability array for this position
-        # and all positions up to the k-mer length
-        multiread_mappability[i:i + kmer_length] += 1.0
+    unique_kmer_start_indicies = np.where(
+        (unique_kmer_lengths <= kmer_length) &
+        (unique_kmer_lengths != 0)
+    )[0]
+
+    # NB: Cannot sum the fractions, must divide at the end. Would not be the
+    # exact same results as Umap had
+
+    # Where we find <= kmer_length and not 0, add "1"
+    multiread_mappability[unique_kmer_start_indicies] += 1
+    # And then kmer_length + 1 places away, subtract "1"
+    multiread_mappability[unique_kmer_start_indicies + kmer_length] -= 1
+    # Take the cumulative sum
+    multiread_mappability = np.cumsum(multiread_mappability)
 
     multiread_mappability /= kmer_length
+
     return multiread_mappability
 
 
