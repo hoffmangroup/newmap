@@ -3,14 +3,14 @@
 ## Introduction
 
 Newmap is a software package that efficiently identifies uniquely mappable
-regions of any genome. It accomplishes this task by outputting the minimum
-length of a k-mer that uniquely maps to a given position in the genome. From
-these ranges of values, the single-read mappability and the multi-read
-mappability for a k-length can be generated.
+regions of any genome. It accomplishes this task by outputting read lengths at
+every position that are unique to that genome. From these ranges of values, the
+single-read mappability and the multi-read mappability for a specific read
+length can be generated.
 
-Newmap can search for minimum k-mer lengths for specific values, or entire
+Newmap can search for minimum k-mer/read lengths for specific values, or entire
 continuous ranges using a binary search method allowing for computing all
-possible minimum unique k-mer lengths for any sequence.
+possible minimum unique k-mer/read lengths for any sequence.
 
 Newmap requires a CPU that supports the AVX2 instruction set.
 
@@ -39,7 +39,7 @@ This will create a `chr1.unique.uint8` file in the current directory.
 ### Convert the unique lengths to mappability output files
 For k-mer lengths of 24:
 ```bash
-newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed chr1.unique.uint8
+newmap generate-mappability -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed 24 chr1.unique.uint8
 ```
 The resulting BED file will be the single read mappbility, and the WIG file will be the multi-read mappability.
 

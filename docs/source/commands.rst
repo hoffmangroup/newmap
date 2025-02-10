@@ -158,7 +158,6 @@ be generated:
 Options
 -------
 
-- `kmer-length`: The length of the k-mer to use for mappability. Defaults to 24.
 - `single-read-bed-file`: The name of the BED file to write the single-read mappability to. Specify ``-`` for ``stdout``.
 - `multi-read-wig-file`: The name of the WIG file to write the multi-read mappability to. Specify ``-`` for ``stdout``.
 - `verbose`: Print verbose output. Default is False.
@@ -169,6 +168,7 @@ Options
 
 Positional Arguments
 --------------------
+- `kmer-length`: The length of the k-mer to use for mappability.
 - `unique_count_files`: One or more unique count files to generate mappability
   from. The resulting mappability from each unique file will be appended to
   files specified by the ``single-read-bed-file`` and ``multi-read-wig-file``
@@ -209,4 +209,4 @@ Example:
 
 .. code-block:: console
 
-    $ newmap generate-mappability -k 24 -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed chr*.unique.uint8
+    $ newmap generate-mappability -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed 24 chr*.unique.uint8
