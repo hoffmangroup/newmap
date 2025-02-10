@@ -155,16 +155,14 @@ def parse_subcommands():
         func=unique_counts_conversion.main)
 
     generate_mappability_parser.add_argument(
+        "kmer_length",
+        type=int,
+        help="Kmer length for mappability file output.")
+
+    generate_mappability_parser.add_argument(
         "unique_count_files",
         nargs="+",  # NB: One or more unique files
         help="One or more unique count files to convert to mappability files")
-
-    generate_mappability_parser.add_argument(
-        "--kmer-length", "-k",
-        default=DEFAULT_KMER_SIZE,
-        type=int,
-        help="Kmer length for mappability file output. Default is {}".format(
-            DEFAULT_KMER_SIZE))
 
     # Add (non-positional) arguments for single-read bed file output
     generate_mappability_parser.add_argument(

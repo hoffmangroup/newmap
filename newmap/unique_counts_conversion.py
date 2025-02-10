@@ -94,7 +94,13 @@ def write_multi_read_wig(wig_file: BinaryIO,
                    .format(chr_name, 1)
                    .encode())
     wig_file.write(b''.join(multi_read_mappability.astype(bytes) + b'\n'))
-    wig_file.flush()
+
+
+def save_remove(filename: str):
+    if (filename and
+       filename != STDOUT_FILENAME and
+       Path(filename).exists()):
+        Path(filename).unlink()
 
 
 def write_mappability_files(unique_count_filenames: list[Path],
@@ -112,6 +118,10 @@ def write_mappability_files(unique_count_filenames: list[Path],
     elif (not single_read_bed_filename and
           not multi_read_wig_filename):
         raise ValueError("Must specify at least one output file")
+
+    # Delete any existing mappability files if they exist
+    save_remove(single_read_bed_filename)
+    save_remove(multi_read_wig_filename)
 
     # For every unique length file specified
     for unique_count_filename in unique_count_filenames:
