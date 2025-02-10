@@ -39,7 +39,10 @@ def create_multiread_mappability_from_unique_file(
     # Where we find <= kmer_length and not 0, add "1"
     multiread_mappability[unique_kmer_start_indicies] += 1
     # And then kmer_length + 1 places away, subtract "1"
-    multiread_mappability[unique_kmer_start_indicies + kmer_length] -= 1
+    # But only if it is a valid index
+    subtract_indices = unique_kmer_start_indicies + kmer_length
+    valid_subtract_indices = subtract_indices < multiread_mappability.size
+    multiread_mappability[subtract_indices[valid_subtract_indices]] -= 1
     # Take the cumulative sum
     multiread_mappability = np.cumsum(multiread_mappability)
 
