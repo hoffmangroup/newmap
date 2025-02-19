@@ -16,6 +16,8 @@ BED_FILE_LINE_FORMAT = "{}\t{}\t{}\tk{}\t{}\t.\n"
 WIG_FIXED_STEP_DECLARATION_FORMAT = \
     "fixedStep chrom={} start={} step=1 span=1\n"
 
+MULTREAD_WRITE_BUFFER_SIZE = 4096  # NB: Size in floats before conversion
+
 
 def create_multiread_mappability_from_unique_file(
      unique_lengths_filename: Path,
@@ -49,6 +51,7 @@ def create_multiread_mappability_from_unique_file(
     multiread_mappability /= kmer_length
 
     return multiread_mappability
+
 
 
 def write_single_read_bed(bed_file: BinaryIO,
@@ -93,7 +96,25 @@ def write_multi_read_wig(wig_file: BinaryIO,
     wig_file.write(WIG_FIXED_STEP_DECLARATION_FORMAT
                    .format(chr_name, 1)
                    .encode())
-    wig_file.write(b''.join(multi_read_mappability.astype(bytes) + b'\n'))
+    write_floats_buffered(multi_read_mappability, wig_file,
+                          MULTREAD_WRITE_BUFFER_SIZE)
+
+
+def write_floats_buffered(float_array: npt.NDArray[np.float64],
+                          file: BinaryIO,
+                          buffer_size: int):
+    # Split the array into buffer_size chunks.
+    # NB: Ideally this would be based on a byte count but it depends on how the
+    # floats are converted and formatted
+
+    # To estimate the number of splits, take the array size, divide by the
+    # buffer size (floored) and add 1
+
+    num_splits = (float_array.size // buffer_size) + 1
+    file.writelines(
+        float_buffer.astype(bytes) + b'\n'
+        for float_buffer in np.array_split(float_array, num_splits)
+    )
 
 
 def save_remove(filename: str):
