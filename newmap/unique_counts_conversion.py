@@ -96,28 +96,14 @@ def write_multi_read_wig(wig_file: BinaryIO,
     wig_file.write(WIG_FIXED_STEP_DECLARATION_FORMAT
                    .format(chr_name, 1)
                    .encode())
-    write_floats_buffered(multi_read_mappability, wig_file,
-                          MULTREAD_WRITE_BUFFER_SIZE)
+
+    for mappability_chunk in np.nditer(multi_read_mappability,
+                                       flags=['external_loop', 'buffered']):
+        wig_file.writelines(f"{value}\n".encode()
+                            for value in mappability_chunk)
 
 
-def write_floats_buffered(float_array: npt.NDArray[np.float64],
-                          file: BinaryIO,
-                          buffer_size: int):
-    # Split the array into buffer_size chunks.
-    # NB: Ideally this would be based on a byte count but it depends on how the
-    # floats are converted and formatted
-
-    # To estimate the number of splits, take the array size, divide by the
-    # buffer size (floored) and add 1
-
-    num_splits = (float_array.size // buffer_size) + 1
-    file.writelines(
-        float_buffer.astype(bytes) + b'\n'
-        for float_buffer in np.array_split(float_array, num_splits)
-    )
-
-
-def save_remove(filename: str):
+def safe_remove(filename: str):
     if (filename and
        filename != STDOUT_FILENAME and
        Path(filename).exists()):
@@ -141,8 +127,8 @@ def write_mappability_files(unique_count_filenames: list[Path],
         raise ValueError("Must specify at least one output file")
 
     # Delete any existing mappability files if they exist
-    save_remove(single_read_bed_filename)
-    save_remove(multi_read_wig_filename)
+    safe_remove(single_read_bed_filename)
+    safe_remove(multi_read_wig_filename)
 
     # For every unique length file specified
     for unique_count_filename in unique_count_filenames:
