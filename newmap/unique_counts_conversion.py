@@ -95,7 +95,8 @@ def write_single_read_bed(bed_file: BinaryIO,
 
 def write_multi_read_wig(wig_file: BinaryIO,
                          multi_read_mappability: npt.NDArray[np.float64],
-                         chr_name: str):
+                         chr_name: str,
+                         decimal_places: int = 2):
 
     # Write out the fixedStep declaration
     wig_file.write(WIG_FIXED_STEP_DECLARATION_FORMAT
@@ -104,8 +105,19 @@ def write_multi_read_wig(wig_file: BinaryIO,
 
     for mappability_chunk in np.nditer(multi_read_mappability,
                                        flags=['external_loop', 'buffered']):
-        wig_file.writelines(f"{value}\n".encode()
-                            for value in mappability_chunk)
+        wig_file.writelines(
+            float_format(value, decimal_places) + b'\n'  # type: ignore
+            for value in mappability_chunk)
+
+
+def float_format(value: float,
+                 decimal_places: int) -> bytes:
+    # Special case for 0, ignore trailing decimal places
+    if value == 0.0:
+        return b"0.0"
+
+    # Otherwise print the specified number of decimal places
+    return f"{value:.{decimal_places}f}".encode()
 
 
 def safe_remove(filename: str):
@@ -199,16 +211,21 @@ def write_mappability_files(unique_count_filenames: list[Path],
             verbose_print(verbose, f"Appending multi-read mappability regions"
                                    f" to {multi_read_wig_filename}")
 
+            # Calculate the number of decimal places
+            decimal_places = int(np.ceil(np.log10(kmer_length)))
+
             if multi_read_wig_filename == STDOUT_FILENAME:
                 write_multi_read_wig(sys.stdout.buffer,
                                      multi_read_mappability,
-                                     chr_name)
+                                     chr_name,
+                                     decimal_places)
             else:
                 with open(multi_read_wig_filename, "ab") as \
                           multi_read_wig_file:
                     write_multi_read_wig(multi_read_wig_file,
                                          multi_read_mappability,
-                                         chr_name)
+                                         chr_name,
+                                         decimal_places)
 
 
 def main(args):
