@@ -16,7 +16,7 @@ BED_FILE_LINE_FORMAT = "{}\t{}\t{}\tk{}\t{}\t.\n"
 WIG_FIXED_STEP_DECLARATION_FORMAT = \
     "fixedStep chrom={} start={} step=1 span=1\n"
 
-MULTREAD_WRITE_BUFFER_SIZE = 4096  # NB: Size in floats before conversion
+MULTIREAD_MAPPABILITY_TYPE = np.float64
 
 
 def create_multiread_mappability_from_unique_file(
@@ -28,30 +28,35 @@ def create_multiread_mappability_from_unique_file(
     unique_kmer_lengths = np.fromfile(str(unique_lengths_filename),
                                       dtype=data_type)
 
-    multiread_mappability = np.zeros(unique_kmer_lengths.size)
+    # NB: This function aims to use numpy's cumulative sum function (cumsum)
+    # in order to sum overlapping intervals (because iterating and summing over
+    # each k length interval can be very slow)
+    # The way this is done in principle is to sum over an array where there are
+    # all zeros by default, and for every interval there is a 1 to mark the
+    # start and a -1 to mark the end
+    # Generally, instead of simply assigning a 1 or -1, these values must
+    # added to the current value to account for intervals where starts and ends
+    # can overlap
 
-    unique_kmer_start_indicies = np.where(
+    # NB: Can't just use the default unsigned types, because there may be
+    # negative values after subtracting out the end intervals
+    # Set a "1" at every position where a interval would start
+    interval_marks = (
         (unique_kmer_lengths <= kmer_length) &
         (unique_kmer_lengths != 0)
-    )[0]
+    ).astype(MULTIREAD_MAPPABILITY_TYPE)
 
+    # And then kmer_length + 1 places away, subtract "1"
+    interval_marks[kmer_length:] -= interval_marks[:-kmer_length]
+
+    # Take the cumulative sum to get a count of overlapping intervals
+    multiread_mappability = np.cumsum(interval_marks)
+    # Get the fraction of overlapping intervals by the length k
     # NB: Cannot sum the fractions, must divide at the end. Would not be the
     # exact same results as Umap had
-
-    # Where we find <= kmer_length and not 0, add "1"
-    multiread_mappability[unique_kmer_start_indicies] += 1
-    # And then kmer_length + 1 places away, subtract "1"
-    # But only if it is a valid index
-    subtract_indices = unique_kmer_start_indicies + kmer_length
-    valid_subtract_indices = subtract_indices < multiread_mappability.size
-    multiread_mappability[subtract_indices[valid_subtract_indices]] -= 1
-    # Take the cumulative sum
-    multiread_mappability = np.cumsum(multiread_mappability)
-
     multiread_mappability /= kmer_length
 
     return multiread_mappability
-
 
 
 def write_single_read_bed(bed_file: BinaryIO,
