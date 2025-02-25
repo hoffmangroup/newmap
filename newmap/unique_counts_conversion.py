@@ -105,9 +105,10 @@ def write_multi_read_wig(wig_file: BinaryIO,
 
     for mappability_chunk in np.nditer(multi_read_mappability,
                                        flags=['external_loop', 'buffered']):
-        wig_file.writelines(
-            float_format(value, decimal_places) + b'\n'  # type: ignore
-            for value in mappability_chunk)
+        wig_file.write(
+            b'\n'.join(float_format(value, decimal_places)  # type: ignore
+                       for value in mappability_chunk) + b'\n'
+        )
 
 
 def float_format(value: float,
