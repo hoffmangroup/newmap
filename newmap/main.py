@@ -27,7 +27,7 @@ DEFAULT_KMER_SIZE = 24
 def parse_subcommands():
     parser = ArgumentParser(
         description="Newmap: A tool for generating mappability "
-                    "data for a reference sequences")
+                    "data for a reference sequence")
 
     parser.add_argument(
         "--version",
@@ -67,7 +67,7 @@ def parse_subcommands():
         type=int,
         default=DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
         help="Compression ratio for the suffix array to be sampled. "
-        "Larger ratios reduces file size and increase average number of "
+        "Larger ratios reduce file size and increase the average number of "
         "operations per query. "
         "Default is {}.".format(DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO))
 
@@ -83,7 +83,7 @@ def parse_subcommands():
     unique_length_parser = subparsers.add_parser(
                             "unique-lengths",
                             description="Creates a binary file with the "
-                                        "unique minimum k-mer length each "
+                                        "shortest unique k-mer length at each "
                                         "sequence position from the range of "
                                         "k-mer lengths given")
 
@@ -92,8 +92,8 @@ def parse_subcommands():
     unique_length_parser.add_argument(
         "kmer_lengths",
         help="Specify k-mer lengths to find unique k-mers. "
-             "Use a comma seperated list of increasing lengths "
-             "or a full inclusive set of lengths seperated by a colon. "
+             "Use a comma separated list of increasing lengths "
+             "or a full inclusive set of lengths separated by a colon. "
              "Example: 20,24,30 or 20:30.")
 
     unique_length_parser.add_argument(
@@ -109,7 +109,8 @@ def parse_subcommands():
         type=int,
         default=0,
         help="Specify the initial search length for unique k-mers. Only valid "
-             "when search range is a continous range separated by a colon."
+             "when the search range is a continuous range separated by a "
+             "colon."
     )
 
     unique_length_parser.add_argument(
@@ -148,7 +149,7 @@ def parse_subcommands():
     # Create a subparser for the "generate-mappability" command
     generate_mappability_parser = subparsers.add_parser(
       "generate-mappability",
-      description="Converts minimum unique kmer length files to mappability "
+      description="Converts unique kmer length files to mappability "
                   "file output")
 
     generate_mappability_parser.set_defaults(
@@ -162,7 +163,8 @@ def parse_subcommands():
     generate_mappability_parser.add_argument(
         "unique_count_files",
         nargs="+",  # NB: One or more unique files
-        help="One or more unique count files to convert to mappability files")
+        help="One or more unique count files to convert to mappability "
+             "file(s)")
 
     # Add (non-positional) arguments for single-read bed file output
     generate_mappability_parser.add_argument(

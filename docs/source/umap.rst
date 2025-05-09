@@ -16,11 +16,7 @@ unique.uint8
 There are minor differences between the ``unique.uint8`` datasets that would
 have been generated from Umap, and the current datasets generated from newmap.
 
-1. Only the following k-mer lengths were in Umap: 24,36,50,100,150,200
-2. K-mers overlapping specifically with dinucleotide sequence ``N`` were not
-   considered unique and were excluded as candidates. Notably this criteria
-   did not include any soft-masked regions with ``n`` or all other possible
-   ambiguous characters.
+In most cases, only the following k-mer lengths were in Umap unique files: 24,36,50,100,150,200
 
 Mappability files
 ^^^^^^^^^^^^^^^^^
