@@ -23,6 +23,10 @@ DEFAULT_EXCLUDED_BASES = 'Nn'
 # Defaults for mappability output
 DEFAULT_KMER_SIZE = 24
 
+INDEX_SUBCOMMAND = "index"
+UNIQUE_LENGTHS_SUBCOMMAND = "search"
+GENERATE_MAPPABILITY_SUBCOMMAND = "track"
+
 
 def parse_subcommands():
     parser = ArgumentParser(
@@ -35,16 +39,16 @@ def parse_subcommands():
         version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(
-        title="Newmap subcommands",
-        description="Valid subcommands",
-        help="see --help on each command for additional information",
+        title="To generate mappability data, the following subcommands must "
+              "be run in order",
+        metavar="",
         required=True)
 
     # Create a subparser for the "generate-index" command
     generate_index_parser = subparsers.add_parser(
-                            "generate-index",
-                            description="Generate a FM index from a fasta "
-                                        "file")
+                            INDEX_SUBCOMMAND,
+                            help="Create an FM index from a "
+                                 "sequence to generate mappability data for.")
     generate_index_parser.set_defaults(func=generate_index.main)
 
     # TODO: Consider changing to -i and -o for input and output
@@ -81,11 +85,10 @@ def parse_subcommands():
 
     # Create a subparser for the "unique-lengths" command
     unique_length_parser = subparsers.add_parser(
-                            "unique-lengths",
-                            description="Creates a binary file with the "
-                                        "shortest unique k-mer length at each "
-                                        "sequence position from the range of "
-                                        "k-mer lengths given")
+                            UNIQUE_LENGTHS_SUBCOMMAND,
+                            help="Finds the shortest unique sequence length "
+                                 "at each position in the input fasta file. "
+                                 "Saves the results to a binary array.")
 
     unique_length_parser.set_defaults(func=unique_counts.main)
 
@@ -130,7 +133,7 @@ def parse_subcommands():
         default=DEFAULT_KMER_BATCH_SIZE,
         type=int,
         help="Maximum number of kmers to batch per reference sequence from "
-             "given fasta file. "
+             "input fasta file. "
              "Use to control memory usage. "
              "Default is {}".format(DEFAULT_KMER_BATCH_SIZE))
 
@@ -148,9 +151,9 @@ def parse_subcommands():
 
     # Create a subparser for the "generate-mappability" command
     generate_mappability_parser = subparsers.add_parser(
-      "generate-mappability",
-      description="Converts unique kmer length files to mappability "
-                  "file output")
+      GENERATE_MAPPABILITY_SUBCOMMAND,
+      help="Converts a binary array of unique sequence length files to "
+           "mappability file output(s) for a given length")
 
     generate_mappability_parser.set_defaults(
         func=unique_counts_conversion.main)
