@@ -5,20 +5,19 @@ import sys
 from newmap import generate_index, unique_counts, unique_counts_conversion
 from newmap.unique_counts_conversion import STDOUT_FILENAME
 
-# Will throw PackagfeNotFoundError if package is not installed
+# Will throw PackageNotFoundError if package is not installed
 __version__ = version("newmap")
 
 # Defaults for FM-index generation
-DEFAULT_INDEX_NAME = "index.awfmi"
-DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO = 8
-DEFAULT_KMER_LENGTH_IN_SEED_TABLE = 12
+DEFAULT_COMPRESSION_RATIO = 8
+DEFAULT_SEED_LENGTH = 12
 
 # Defaults for minimum kmer length counting
+# TODO: Check where/if these are used
 DEFAULT_KMER_BATCH_SIZE = 1000000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_MINIMUM_KMER_LENGTH = 20
 DEFAULT_MAXIMUM_KMER_LENGTH = 200
-DEFAULT_EXCLUDED_BASES = 'Nn'
 
 # Defaults for mappability output
 DEFAULT_KMER_SIZE = 24
@@ -54,36 +53,36 @@ def parse_subcommands():
     # TODO: Consider changing to -i and -o for input and output
     generate_index_parser.add_argument(
         "fasta_file",
-        help="Filename of input fasta file")
+        help="Filename of reference sequence in Fasta format")
 
     generate_index_parser.add_argument(
-        "--index-file", "-i",
-        default=DEFAULT_INDEX_NAME,
-        help="Filename to output the reference index file for kmer counting. "
-        "Default is {}".format(DEFAULT_INDEX_NAME))
+        "--awfmi-base", "-i",
+        help="Basename of the index file to write. The default is the "
+        "basename of the input fasta file with the awfmi extension.")
 
     fm_index_paramater_group = generate_index_parser.add_argument_group(
-        "FM-index parameters",
+        "Indexing parameters",
         "Parameters for the FM-index generation")
 
     fm_index_paramater_group.add_argument(
-        "--suffix-array-compression-ratio", "-c",
+        "--compression-ratio", "-c",
         type=int,
-        default=DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
+        default=DEFAULT_COMPRESSION_RATIO,
         help="Compression ratio for the suffix array to be sampled. "
         "Larger ratios reduce file size and increase the average number of "
         "operations per query. "
-        "Default is {}.".format(DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO))
+        "Default is {}.".format(DEFAULT_COMPRESSION_RATIO))
 
     fm_index_paramater_group.add_argument(
-        "--kmer-length-in-seed-table", "-k",
+        "--seed-length", "-s",
         type=int,
-        default=DEFAULT_KMER_LENGTH_IN_SEED_TABLE,
-        help="Length of kmers to memoize in a lookup table to speed up "
-        "searches. Each value increase multiplies memory usage by 4. "
-        "Default is {}.".format(DEFAULT_KMER_LENGTH_IN_SEED_TABLE))
+        default=DEFAULT_SEED_LENGTH,
+        help="Length of k-mers to memoize in a lookup table to speed up "
+        "searches. Each value increase multiplies memory usage of the index "
+        "by 4. "
+        "Default is {}.".format(DEFAULT_SEED_LENGTH))
 
-    # Create a subparser for the "unique-lengths" command
+    # Create a subparser for the "search" command
     unique_length_parser = subparsers.add_parser(
                             UNIQUE_LENGTHS_SUBCOMMAND,
                             help="Finds the shortest unique sequence length "
@@ -132,7 +131,7 @@ def parse_subcommands():
         "--kmer-batch-size", "-s",
         default=DEFAULT_KMER_BATCH_SIZE,
         type=int,
-        help="Maximum number of kmers to batch per reference sequence from "
+        help="Maximum number of k-mers to batch per reference sequence from "
              "input fasta file. "
              "Use to control memory usage. "
              "Default is {}".format(DEFAULT_KMER_BATCH_SIZE))
@@ -152,8 +151,8 @@ def parse_subcommands():
     # Create a subparser for the "generate-mappability" command
     generate_mappability_parser = subparsers.add_parser(
       GENERATE_MAPPABILITY_SUBCOMMAND,
-      help="Converts a binary array of unique sequence length files to "
-           "mappability file output(s) for a given length")
+      help="Converts binary array files of unique sequence lengths to "
+           "mappability file track(s) for a specific read length")
 
     generate_mappability_parser.set_defaults(
         func=unique_counts_conversion.main)
