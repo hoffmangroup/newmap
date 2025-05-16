@@ -6,8 +6,8 @@ import unittest
 from util import TEST_DATA_PATH
 
 from newmap._c_newmap_generate_index import generate_fm_index
-from newmap.main import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                         DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+from newmap.main import (DEFAULT_COMPRESSION_RATIO,
+                         DEFAULT_SEED_LENGTH)
 
 
 class TestGenerateIndex(unittest.TestCase):
@@ -24,8 +24,8 @@ class TestGenerateIndex(unittest.TestCase):
 
             generate_fm_index(self.reference_sequence,
                               test_genome_index_filename,
-                              DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                              DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+                              DEFAULT_COMPRESSION_RATIO,
+                              DEFAULT_SEED_LENGTH)
 
             # Compare our created index with the expected index already made
             self.assertTrue(filecmp.cmp(test_genome_index_filename,
@@ -42,5 +42,5 @@ class TestGenerateIndex(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 generate_fm_index(self.fake_reference_sequence,
                                   test_genome_index_filename,
-                                  DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                                  DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+                                  DEFAULT_COMPRESSION_RATIO,
+                                  DEFAULT_SEED_LENGTH)

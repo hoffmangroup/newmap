@@ -4,8 +4,8 @@ from tempfile import NamedTemporaryFile
 from util import TEST_DATA_PATH
 
 from newmap._c_newmap_count_kmers import count_kmers, count_kmers_from_sequence
-from newmap.main import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                         DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+from newmap.main import (DEFAULT_COMPRESSION_RATIO,
+                         DEFAULT_SEED_LENGTH)
 from newmap.generate_index import generate_fm_index
 
 
@@ -14,8 +14,8 @@ class TestCountKmers(unittest.TestCase):
         self.genome_index_filename = NamedTemporaryFile(mode="w").name
         generate_fm_index(str(TEST_DATA_PATH / 'genome.fa'),
                           self.genome_index_filename,
-                          DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                          DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+                          DEFAULT_COMPRESSION_RATIO,
+                          DEFAULT_SEED_LENGTH)
         self.num_threads = 1
 
     def test_count_kmers(self):

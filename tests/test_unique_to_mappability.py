@@ -4,8 +4,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from util import TEST_DATA_PATH
 
-from newmap.main import (DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                         DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+from newmap.main import (DEFAULT_COMPRESSION_RATIO,
+                         DEFAULT_SEED_LENGTH)
 from newmap.generate_index import generate_fm_index
 from newmap.unique_counts import write_unique_counts
 from newmap.unique_counts_conversion import write_mappability_files
@@ -21,8 +21,8 @@ class TestCountKmers(unittest.TestCase):
     def setUpClass(cls):
         generate_fm_index(cls.fasta_filename,
                           cls.genome_index_filename,
-                          DEFAULT_SUFFIX_ARRAY_COMPRESSION_RATIO,
-                          DEFAULT_KMER_LENGTH_IN_SEED_TABLE)
+                          DEFAULT_COMPRESSION_RATIO,
+                          DEFAULT_SEED_LENGTH)
 
         write_unique_counts(Path(cls.fasta_filename),
                             Path(cls.genome_index_filename),
