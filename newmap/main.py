@@ -16,11 +16,10 @@ DEFAULT_SEED_LENGTH = 12
 # TODO: Check where/if these are used
 DEFAULT_KMER_BATCH_SIZE = 1000000
 DEFAULT_THREAD_COUNT = 1
-DEFAULT_MINIMUM_KMER_LENGTH = 20
-DEFAULT_MAXIMUM_KMER_LENGTH = 200
+DEFAULT_KMER_SEARCH_RANGE = "20:200"
 
-# Defaults for mappability output
-DEFAULT_KMER_SIZE = 24
+INDEX_EXTENSION = "awfmi"
+FASTA_FILE_METAVAR = "fasta_file"
 
 INDEX_SUBCOMMAND = "index"
 UNIQUE_LENGTHS_SUBCOMMAND = "search"
@@ -57,8 +56,10 @@ def parse_subcommands():
 
     generate_index_parser.add_argument(
         "--awfmi-base", "-i",
+        metavar="BASENAME",
         help="Basename of the index file to write. The default is the "
-        "basename of the input fasta file with the awfmi extension.")
+        f"basename of the input fasta file with the {INDEX_EXTENSION} "
+        "extension.")
 
     fm_index_paramater_group = generate_index_parser.add_argument_group(
         "Indexing parameters",
@@ -68,6 +69,7 @@ def parse_subcommands():
         "--compression-ratio", "-c",
         type=int,
         default=DEFAULT_COMPRESSION_RATIO,
+        metavar="RATIO",
         help="Compression ratio for the suffix array to be sampled. "
         "Larger ratios reduce file size and increase the average number of "
         "operations per query. "
@@ -77,6 +79,7 @@ def parse_subcommands():
         "--seed-length", "-s",
         type=int,
         default=DEFAULT_SEED_LENGTH,
+        metavar="LENGTH",
         help="Length of k-mers to memoize in a lookup table to speed up "
         "searches. Each value increase multiplies memory usage of the index "
         "by 4. "
@@ -87,66 +90,95 @@ def parse_subcommands():
                             UNIQUE_LENGTHS_SUBCOMMAND,
                             help="Finds the shortest unique sequence length "
                                  "at each position in the input fasta file. "
-                                 "Saves the results to a binary array.")
+                                 "Saves the results to a binary file "
+                                 "containing an array with the shortest "
+                                 "lengths found within the search range.")
 
     unique_length_parser.set_defaults(func=unique_counts.main)
 
     unique_length_parser.add_argument(
-        "kmer_lengths",
-        help="Specify k-mer lengths to find unique k-mers. "
-             "Use a comma separated list of increasing lengths "
-             "or a full inclusive set of lengths separated by a colon. "
-             "Example: 20,24,30 or 20:30.")
-
-    unique_length_parser.add_argument(
-        "index_file",
-        help="Filename of reference index file to count occurances in")
-
-    unique_length_parser.add_argument(
         "fasta_file",
+        metavar=FASTA_FILE_METAVAR,
         help="Filename of (gzipped) fasta file for kmer generation")
 
     unique_length_parser.add_argument(
-        "--initial-search-length", "-l",
-        type=int,
-        default=0,
-        help="Specify the initial search length for unique k-mers. Only valid "
-             "when the search range is a continuous range separated by a "
-             "colon."
-    )
+        "index_file",
+        nargs="?",
+        help="Filename of reference index file to count occurances in. "
+             f"Defaults to the basename of the {FASTA_FILE_METAVAR} with "
+             f"the {INDEX_EXTENSION} extension.")
 
-    unique_length_parser.add_argument(
+    unique_length_output_parameter_group = \
+        unique_length_parser.add_argument_group(
+            "Output parameters")
+
+    unique_length_output_parameter_group.add_argument(
+        "--search-range", "-r",
+        metavar="RANGE",
+        default=DEFAULT_KMER_SEARCH_RANGE,
+        help="Search set of sequence lengths to determine uniqueness. "
+             "Use a comma separated list of increasing lengths "
+             "or a full inclusive set of lengths separated by a colon. "
+             "Examples: 20,24,30 or 20:30. "
+             f"Default is {DEFAULT_KMER_SEARCH_RANGE}.")
+
+    unique_length_output_parameter_group.add_argument(
+        "--output-directory", "-o",
+        metavar="DIR",
+        default=".",
+        help="Directory to write the binary files containing the 'unique' "
+             "lengths to. Default is the current working directory.")
+
+    unique_length_output_parameter_group.add_argument(
         "--include-sequences", "-i",
+        metavar="IDS",
         help="A comma separated list of sequence IDs to select from the given "
              "fasta file. Default is to use all sequences when not specified. "
              "Cannot be used with --exclude-sequences.")
 
-    unique_length_parser.add_argument(
+    unique_length_output_parameter_group.add_argument(
         "--exclude-sequences", "-x",
+        metavar="IDS",
         help="A comma separated list of sequence IDs to exclude from the "
              "given fasta file. Default is to use all sequences when not "
              "specified. Cannot be used with --include-sequences.")
 
-    unique_length_parser.add_argument(
+    unique_length_output_parameter_group.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Print additional information to standard error",)
+
+    unique_length_performance_parameter_group = \
+        unique_length_parser.add_argument_group(
+            "Performance parameters")
+
+    unique_length_performance_parameter_group.add_argument(
+        "--initial-search-length", "-l",
+        type=int,
+        metavar="LENGTH",
+        default=0,
+        help="Specify the initial search length. Only valid "
+             "when the search range is a continuous range separated by a "
+             "colon. Defaults to the midpoint of the range."
+    )
+
+    unique_length_performance_parameter_group.add_argument(
         "--kmer-batch-size", "-s",
         default=DEFAULT_KMER_BATCH_SIZE,
+        metavar="SIZE",
         type=int,
         help="Maximum number of k-mers to batch per reference sequence from "
              "input fasta file. "
              "Use to control memory usage. "
              "Default is {}".format(DEFAULT_KMER_BATCH_SIZE))
 
-    unique_length_parser.add_argument(
-        "--thread-count", "-t",
+    unique_length_performance_parameter_group.add_argument(
+        "--num-threads", "-t",
         default=DEFAULT_THREAD_COUNT,
+        metavar="NUM",
         type=int,
         help="Number of threads to parallelize kmer counting. "
              "Default is {}".format(DEFAULT_THREAD_COUNT))
-
-    unique_length_parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print additional information to standard error",)
 
     # Create a subparser for the "generate-mappability" command
     generate_mappability_parser = subparsers.add_parser(
@@ -181,7 +213,7 @@ def parse_subcommands():
              "for standard output.".format(STDOUT_FILENAME))
 
     generate_mappability_parser.add_argument(
-        "--verbose",
+        "--verbose", "-v",
         action="store_true",
         help="Print additional information to standard error",)
 
