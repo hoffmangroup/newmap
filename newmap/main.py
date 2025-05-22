@@ -14,9 +14,10 @@ DEFAULT_SEED_LENGTH = 12
 
 # Defaults for minimum kmer length counting
 # TODO: Check where/if these are used
-DEFAULT_KMER_BATCH_SIZE = 1000000
+DEFAULT_KMER_BATCH_SIZE = 10000000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_KMER_SEARCH_RANGE = "20:200"
+DEFAULT_MAPPABILITY_READ_LENGTH = 24
 
 INDEX_EXTENSION = "awfmi"
 FASTA_FILE_METAVAR = "fasta_file"
@@ -62,8 +63,7 @@ def parse_subcommands():
         "extension.")
 
     fm_index_paramater_group = generate_index_parser.add_argument_group(
-        "Indexing parameters",
-        "Parameters for the FM-index generation")
+        "indexing arguments")
 
     fm_index_paramater_group.add_argument(
         "--compression-ratio", "-c",
@@ -110,7 +110,7 @@ def parse_subcommands():
 
     unique_length_output_parameter_group = \
         unique_length_parser.add_argument_group(
-            "Output parameters")
+            "output arguments")
 
     unique_length_output_parameter_group.add_argument(
         "--search-range", "-r",
@@ -150,7 +150,7 @@ def parse_subcommands():
 
     unique_length_performance_parameter_group = \
         unique_length_parser.add_argument_group(
-            "Performance parameters")
+            "performance arguments")
 
     unique_length_performance_parameter_group.add_argument(
         "--initial-search-length", "-l",
@@ -190,9 +190,12 @@ def parse_subcommands():
         func=unique_counts_conversion.main)
 
     generate_mappability_parser.add_argument(
-        "kmer_length",
+        "read_length",
         type=int,
-        help="Kmer length for mappability file output.")
+        default=DEFAULT_MAPPABILITY_READ_LENGTH,
+        metavar="read_length",
+        help="Mappability values to be calculated based on this read length. "
+             "Default is {}.".format(DEFAULT_MAPPABILITY_READ_LENGTH))
 
     generate_mappability_parser.add_argument(
         "unique_count_files",
@@ -203,12 +206,14 @@ def parse_subcommands():
     # Add (non-positional) arguments for single-read bed file output
     generate_mappability_parser.add_argument(
         "--single-read-bed-file", "-s",
+        metavar="FILE",
         help="Filename for single-read mappability BED file output. Use '{}' "
              "for standard output.".format(STDOUT_FILENAME))
 
     # Add (non-positional) arguments for multi-read wiggle file output
     generate_mappability_parser.add_argument(
         "--multi-read-wig-file", "-m",
+        metavar="FILE",
         help="Filename for multi-read mappability WIG file output. Use '{}' "
              "for standard output.".format(STDOUT_FILENAME))
 
