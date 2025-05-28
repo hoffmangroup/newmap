@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, IO, TextIO, Union
 import sys
 
+INDEX_EXTENSION = "awfmi"
+
 
 def optional_gzip_open(file_path: Path,
                        mode: str) -> Union[gzip.GzipFile, TextIO, IO[Any]]:

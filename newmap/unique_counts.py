@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from newmap._c_newmap_count_kmers import count_kmers_from_sequence
+from newmap.util import INDEX_EXTENSION
 from newmap.util import optional_gzip_open, verbose_print
 from newmap.fasta import SequenceSegment, sequence_segments
 
@@ -26,6 +27,7 @@ def write_unique_counts(fasta_filename: Path,
                         exclude_sequence_ids: list[bytes],
                         num_threads: int,
                         use_binary_search=False,
+                        output_directory: Path = Path("."),
                         verbose: bool = False):
 
     max_kmer_length = max(kmer_lengths)
@@ -169,7 +171,7 @@ def write_unique_counts(fasta_filename: Path,
                                        "sequence segment")
 
             # Append the unique counts to a unique count file per sequence
-            with open(UNIQUE_COUNT_FILENAME_FORMAT.format(
+            with open(output_directory / UNIQUE_COUNT_FILENAME_FORMAT.format(
               sequence_segment.id.decode(),
               unique_count_suffix), "ab") as unique_count_file:
                 segment_unique_counts.tofile(unique_count_file)
@@ -371,7 +373,7 @@ def linear_search(index_filename: Path,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
     finished_search = get_ambiguous_sequence_mask(sequence_segment,
-                                                  num_kmers)
+                                              num_kmers)
 
     ambiguous_positions_skipped = finished_search.sum()
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
@@ -689,12 +691,28 @@ def main(args):
     fasta_filename = args.fasta_file
     index_filename = args.index_file
     kmer_batch_size = args.kmer_batch_size
-    kmer_lengths_arg = args.kmer_lengths
+    kmer_lengths_arg = args.search_range
+    output_directory = args.output_directory
     initial_search_length = args.initial_search_length
     include_sequences_arg = args.include_sequences
     exclude_sequences_arg = args.exclude_sequences
-    num_threads = args.thread_count
+    num_threads = args.num_threads
     verbose = args.verbose
+
+    # If an output directory was specified
+    if output_directory:
+        # Create the output directory (and parents) if it does not exist
+        output_directory = Path(output_directory)
+        # Do not raise an error if it already exists
+        output_directory.mkdir(parents=True, exist_ok=True)
+    # Otherwise use the current working directory
+    else:
+        output_directory = Path(".")
+
+    # If no index filename was specified
+    if not index_filename:
+        # Use the basename of the fasta file
+        index_filename = Path(fasta_filename).with_suffix("."+INDEX_EXTENSION)
 
     # Parse the kmer lengths
     # NB: Either comma seperated or a range seperated by a colon
@@ -749,4 +767,5 @@ def main(args):
                         exclude_sequence_ids,
                         num_threads,
                         use_binary_search,
+                        output_directory,
                         verbose)

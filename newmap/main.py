@@ -3,6 +3,7 @@ from importlib.metadata import version
 import sys
 
 from newmap import generate_index, unique_counts, unique_counts_conversion
+from newmap.util import INDEX_EXTENSION
 from newmap.unique_counts_conversion import STDOUT_FILENAME
 
 # Will throw PackageNotFoundError if package is not installed
@@ -19,7 +20,6 @@ DEFAULT_THREAD_COUNT = 1
 DEFAULT_KMER_SEARCH_RANGE = "20:200"
 DEFAULT_MAPPABILITY_READ_LENGTH = 24
 
-INDEX_EXTENSION = "awfmi"
 FASTA_FILE_METAVAR = "fasta_file"
 
 INDEX_SUBCOMMAND = "index"
@@ -46,34 +46,33 @@ def parse_subcommands():
     # Create a subparser for the "generate-index" command
     generate_index_parser = subparsers.add_parser(
                             INDEX_SUBCOMMAND,
-                            help="Create an FM index from a "
-                                 "sequence to generate mappability data for.")
+                            help="Create an FM index from sequences")
     generate_index_parser.set_defaults(func=generate_index.main)
 
     # TODO: Consider changing to -i and -o for input and output
     generate_index_parser.add_argument(
         "fasta_file",
-        help="Filename of reference sequence in Fasta format")
+        help="Reference sequence file in FASTA format")
 
     generate_index_parser.add_argument(
-        "--awfmi-base", "-i",
-        metavar="BASENAME",
-        help="Basename of the index file to write. The default is the "
-        f"basename of the input fasta file with the {INDEX_EXTENSION} "
-        "extension.")
+        "--output", "-i",
+        metavar="FILE",
+        help="Filename of the index file to write. (default: "
+             f"{FASTA_FILE_METAVAR} with the extension changed to "
+             f"'.{INDEX_EXTENSION}')")
 
     fm_index_paramater_group = generate_index_parser.add_argument_group(
-        "indexing arguments")
+        "performance tuning arguments")
 
     fm_index_paramater_group.add_argument(
         "--compression-ratio", "-c",
         type=int,
         default=DEFAULT_COMPRESSION_RATIO,
         metavar="RATIO",
-        help="Compression ratio for the suffix array to be sampled. "
+        help="Compression ratio for suffix array to be sampled. "
         "Larger ratios reduce file size and increase the average number of "
         "operations per query. "
-        "Default is {}.".format(DEFAULT_COMPRESSION_RATIO))
+        f"(default: {DEFAULT_COMPRESSION_RATIO})")
 
     fm_index_paramater_group.add_argument(
         "--seed-length", "-s",
@@ -83,30 +82,27 @@ def parse_subcommands():
         help="Length of k-mers to memoize in a lookup table to speed up "
         "searches. Each value increase multiplies memory usage of the index "
         "by 4. "
-        "Default is {}.".format(DEFAULT_SEED_LENGTH))
+        f"(default: {DEFAULT_SEED_LENGTH})")
 
     # Create a subparser for the "search" command
     unique_length_parser = subparsers.add_parser(
                             UNIQUE_LENGTHS_SUBCOMMAND,
-                            help="Finds the shortest unique sequence length "
-                                 "at each position in the input fasta file. "
-                                 "Saves the results to a binary file "
-                                 "containing an array with the shortest "
-                                 "lengths found within the search range.")
+                            help="Find the shortest unique sequence length "
+                                 "at each position in sequences.")
 
     unique_length_parser.set_defaults(func=unique_counts.main)
 
     unique_length_parser.add_argument(
         "fasta_file",
         metavar=FASTA_FILE_METAVAR,
-        help="Filename of (gzipped) fasta file for kmer generation")
+        help="File of (gzipped) fasta file for kmer generation")
 
     unique_length_parser.add_argument(
         "index_file",
         nargs="?",
-        help="Filename of reference index file to count occurances in. "
-             f"Defaults to the basename of the {FASTA_FILE_METAVAR} with "
-             f"the {INDEX_EXTENSION} extension.")
+        help="File of reference index file to count occurances in. "
+             f"(default: basename of {FASTA_FILE_METAVAR} with "
+             f"the {INDEX_EXTENSION} extension)")
 
     unique_length_output_parameter_group = \
         unique_length_parser.add_argument_group(
@@ -120,28 +116,30 @@ def parse_subcommands():
              "Use a comma separated list of increasing lengths "
              "or a full inclusive set of lengths separated by a colon. "
              "Examples: 20,24,30 or 20:30. "
-             f"Default is {DEFAULT_KMER_SEARCH_RANGE}.")
+             f"(default: {DEFAULT_KMER_SEARCH_RANGE})")
 
     unique_length_output_parameter_group.add_argument(
         "--output-directory", "-o",
         metavar="DIR",
         default=".",
         help="Directory to write the binary files containing the 'unique' "
-             "lengths to. Default is the current working directory.")
+             "lengths to. (default: current working directory)")
 
     unique_length_output_parameter_group.add_argument(
         "--include-sequences", "-i",
         metavar="IDS",
-        help="A comma separated list of sequence IDs to select from the given "
-             "fasta file. Default is to use all sequences when not specified. "
-             "Cannot be used with --exclude-sequences.")
+        help="A comma separated list of sequence IDs to select from "
+             f"{FASTA_FILE_METAVAR}. "
+             "Cannot be used with --exclude-sequences. "
+             f"(default: all sequences in {FASTA_FILE_METAVAR})")
 
     unique_length_output_parameter_group.add_argument(
         "--exclude-sequences", "-x",
         metavar="IDS",
-        help="A comma separated list of sequence IDs to exclude from the "
-             "given fasta file. Default is to use all sequences when not "
-             "specified. Cannot be used with --include-sequences.")
+        help="A comma separated list of sequence IDs to exclude from "
+             f"{FASTA_FILE_METAVAR}. "
+             "Cannot be used with --include-sequences. "
+             f"(default: all sequences in {FASTA_FILE_METAVAR})")
 
     unique_length_output_parameter_group.add_argument(
         "--verbose", "-v",
@@ -159,7 +157,7 @@ def parse_subcommands():
         default=0,
         help="Specify the initial search length. Only valid "
              "when the search range is a continuous range separated by a "
-             "colon. Defaults to the midpoint of the range."
+             "colon. (default: midpoint of the range)"
     )
 
     unique_length_performance_parameter_group.add_argument(
@@ -170,21 +168,21 @@ def parse_subcommands():
         help="Maximum number of k-mers to batch per reference sequence from "
              "input fasta file. "
              "Use to control memory usage. "
-             "Default is {}".format(DEFAULT_KMER_BATCH_SIZE))
+             f"(default: {DEFAULT_KMER_BATCH_SIZE})")
 
     unique_length_performance_parameter_group.add_argument(
         "--num-threads", "-t",
         default=DEFAULT_THREAD_COUNT,
         metavar="NUM",
         type=int,
-        help="Number of threads to parallelize kmer counting. "
-             "Default is {}".format(DEFAULT_THREAD_COUNT))
+        help="Number of threads to parallelize k-mer counting. "
+             f"(default: {DEFAULT_THREAD_COUNT})")
 
     # Create a subparser for the "generate-mappability" command
     generate_mappability_parser = subparsers.add_parser(
       GENERATE_MAPPABILITY_SUBCOMMAND,
-      help="Converts binary array files of unique sequence lengths to "
-           "mappability file track(s) for a specific read length")
+      help="Calculate single and multi-read mappability tracks from shortest "
+           "unique sequence lengths.")
 
     generate_mappability_parser.set_defaults(
         func=unique_counts_conversion.main)
@@ -195,29 +193,35 @@ def parse_subcommands():
         default=DEFAULT_MAPPABILITY_READ_LENGTH,
         metavar="read_length",
         help="Mappability values to be calculated based on this read length. "
-             "Default is {}.".format(DEFAULT_MAPPABILITY_READ_LENGTH))
+             f"(default is {DEFAULT_MAPPABILITY_READ_LENGTH})")
 
     generate_mappability_parser.add_argument(
         "unique_count_files",
         nargs="+",  # NB: One or more unique files
         help="One or more unique count files to convert to mappability "
-             "file(s)")
+             "files")
+
+    mappability_output_parameter_group = \
+        generate_mappability_parser.add_argument_group(
+            "output arguments")
 
     # Add (non-positional) arguments for single-read bed file output
-    generate_mappability_parser.add_argument(
-        "--single-read-bed-file", "-s",
+    mappability_output_parameter_group.add_argument(
+        "--single-read", "-s",
         metavar="FILE",
-        help="Filename for single-read mappability BED file output. Use '{}' "
-             "for standard output.".format(STDOUT_FILENAME))
+        help="Filename for single-read mappability BED file output. Use "
+             f"'{STDOUT_FILENAME}' for standard output. (default: "
+             f"'{STDOUT_FILENAME}' if not multi-read not specified, otherwise "
+             "nothing)")
 
     # Add (non-positional) arguments for multi-read wiggle file output
-    generate_mappability_parser.add_argument(
-        "--multi-read-wig-file", "-m",
+    mappability_output_parameter_group.add_argument(
+        "--multi-read", "-m",
         metavar="FILE",
-        help="Filename for multi-read mappability WIG file output. Use '{}' "
-             "for standard output.".format(STDOUT_FILENAME))
+        help="Filename for multi-read mappability WIG file output. Use "
+             f"'{STDOUT_FILENAME}' for standard output. (default: nothing)")
 
-    generate_mappability_parser.add_argument(
+    mappability_output_parameter_group.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Print additional information to standard error",)
