@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+set -x
+
+newmap --version
+
 newmap index \
     --compression-ratio=32 \
     --seed-length=1 \
