@@ -375,7 +375,7 @@ def linear_search(index_filename: Path,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
     finished_search = get_ambiguous_sequence_mask(sequence_segment,
-                                              num_kmers)
+                                                  num_kmers)
 
     ambiguous_positions_skipped = finished_search.sum()
     verbose_print(verbose, f"Skipping {ambiguous_positions_skipped} ambiguous "
