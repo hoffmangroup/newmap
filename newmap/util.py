@@ -4,6 +4,7 @@ from typing import Any, IO, TextIO, Union
 import sys
 
 INDEX_EXTENSION = "awfmi"
+DEFAULT_MAPPABILITY_READ_LENGTH = 24
 
 
 def optional_gzip_open(file_path: Path,

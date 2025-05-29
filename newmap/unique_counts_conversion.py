@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 from typing import BinaryIO, Union
 
-from newmap.util import verbose_print
+from newmap.util import DEFAULT_MAPPABILITY_READ_LENGTH, verbose_print
 
 import numpy as np
 import numpy.typing as npt
@@ -192,8 +192,12 @@ def write_mappability_files(unique_count_filenames: list[Path],
                                       multi_read_mappability.shape[0]))
 
         if single_read_bed_filename:
+            filename = single_read_bed_filename
+            if filename == STDOUT_FILENAME:
+                filename = "standard output"
+
             verbose_print(verbose, f"Appending single-read mappability "
-                                   f"regions to {single_read_bed_filename}")
+                                   f"regions to {filename}")
 
             if single_read_bed_filename == STDOUT_FILENAME:
                 write_single_read_bed(sys.stdout.buffer,
@@ -209,8 +213,12 @@ def write_mappability_files(unique_count_filenames: list[Path],
                                           chr_name)
 
         if multi_read_wig_filename:
+            filename = multi_read_wig_filename
+            if filename == STDOUT_FILENAME:
+                filename = "standard output"
+
             verbose_print(verbose, f"Appending multi-read mappability regions"
-                                   f" to {multi_read_wig_filename}")
+                                   f" to {filename}")
 
             # Calculate the number of decimal places
             decimal_places = int(np.ceil(np.log10(kmer_length)))
@@ -232,10 +240,27 @@ def write_mappability_files(unique_count_filenames: list[Path],
 def main(args):
     unique_count_filenames = [Path(filename) for filename in
                               args.unique_count_files]
-    kmer_length = args.kmer_length
-    single_read_bed_filename = args.single_read_bed_file
-    multi_read_wig_filename = args.multi_read_wig_file
+    kmer_length = args.read_length
+    single_read_bed_filename = args.single_read
+    multi_read_wig_filename = args.multi_read
     verbose = args.verbose
+
+    # Check to see if the read/k-mer length is valid or specified
+    # If not
+    if not kmer_length.isdigit():
+        # Assume the read/k-mer length on the command line is a unique filename
+        unique_count_filenames.insert(0, Path(kmer_length))
+        # Set the k-mer length to the default value
+        kmer_length = DEFAULT_MAPPABILITY_READ_LENGTH
+    else:
+        # Convert the k-mer length to an integer
+        kmer_length = int(kmer_length)
+
+    # If neither single-read nor multi-read output files are specified
+    # Default to single-read standard output
+    if (not single_read_bed_filename and
+       not multi_read_wig_filename):
+        single_read_bed_filename = STDOUT_FILENAME
 
     write_mappability_files(unique_count_filenames,
                             kmer_length,

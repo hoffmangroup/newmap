@@ -76,6 +76,7 @@ def write_unique_counts(fasta_filename: Path,
         min_length_found = max_kmer_length
 
         current_sequence_id = b''
+        current_unique_filepath = Path("")
 
         # For each sequence buffer from the fasta file
         for sequence_segment in sequence_segments(fasta_file,
@@ -93,16 +94,12 @@ def write_unique_counts(fasta_filename: Path,
                        (sequence_segment.id in exclude_sequence_ids)):
                         # Skip the current buffer
                         continue
-                    # Otherwise
-                    else:
-                        # This sequence will be processed
-                        sequence_processed = True
 
-                # Otherwise
-                # Truncate any existing file for the new sequence
-                open(UNIQUE_COUNT_FILENAME_FORMAT.format(
-                     sequence_segment.id.decode(),
-                     unique_count_suffix), "wb").close()
+                # NB: At this point we are guaranteed to be on a new valid
+                # sequence ID to be processed
+
+                # Mark at least one sequence will be processed (for warnings)
+                sequence_processed = True
 
                 # Print out the summary statistics from the previously
                 # processed chromosome
@@ -116,6 +113,13 @@ def write_unique_counts(fasta_filename: Path,
 
                 # Update the current working sequence id
                 current_sequence_id = sequence_segment.id
+                # Update the current unique count filename
+                current_unique_filepath = \
+                    output_directory / UNIQUE_COUNT_FILENAME_FORMAT.format(
+                        sequence_segment.id.decode(), unique_count_suffix)
+
+                # Truncate any existing file for the new sequence
+                open(current_unique_filepath, "wb").close()
 
                 verbose_print(verbose,
                               "Writing minimum unique lengths for sequence "
@@ -171,9 +175,7 @@ def write_unique_counts(fasta_filename: Path,
                                        "sequence segment")
 
             # Append the unique counts to a unique count file per sequence
-            with open(output_directory / UNIQUE_COUNT_FILENAME_FORMAT.format(
-              sequence_segment.id.decode(),
-              unique_count_suffix), "ab") as unique_count_file:
+            with open(current_unique_filepath, "ab") as unique_count_file:
                 segment_unique_counts.tofile(unique_count_file)
 
         print_summary_statisitcs(verbose,

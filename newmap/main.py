@@ -3,7 +3,7 @@ from importlib.metadata import version
 import sys
 
 from newmap import generate_index, unique_counts, unique_counts_conversion
-from newmap.util import INDEX_EXTENSION
+from newmap.util import DEFAULT_MAPPABILITY_READ_LENGTH, INDEX_EXTENSION
 from newmap.unique_counts_conversion import STDOUT_FILENAME
 
 # Will throw PackageNotFoundError if package is not installed
@@ -18,7 +18,6 @@ DEFAULT_SEED_LENGTH = 12
 DEFAULT_KMER_BATCH_SIZE = 10000000
 DEFAULT_THREAD_COUNT = 1
 DEFAULT_KMER_SEARCH_RANGE = "20:200"
-DEFAULT_MAPPABILITY_READ_LENGTH = 24
 
 FASTA_FILE_METAVAR = "fasta_file"
 
@@ -189,7 +188,7 @@ def parse_subcommands():
 
     generate_mappability_parser.add_argument(
         "read_length",
-        type=int,
+        nargs="?",
         default=DEFAULT_MAPPABILITY_READ_LENGTH,
         metavar="read_length",
         help="Mappability values to be calculated based on this read length. "
