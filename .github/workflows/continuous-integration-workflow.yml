@@ -54,7 +54,7 @@ jobs:
       - name: Run tests
         run: |
           # Make sure to be running newmap from installed site-packages
-          cd tests && python -m unittest discover
+          cd tests && python -m unittest discover && ./run_all.sh
 
   build-wheel:
     runs-on: ubuntu-latest
