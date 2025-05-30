@@ -6,9 +6,6 @@ build-backend = "setuptools.build_meta"
 authors = [
   {name = "Eric Roberts", email = "eric.roberts@uhn.ca"},
   {name = "Michael Hoffman", email = "michael.hoffman@utoronto.ca"},
-  {name = "Mehran Karimzadeh"},
-  {name = "Carl Ernst"},
-  {name = "Anshul Kundaje"},
 ]
 classifiers = [
   "Natural Language :: English",
