@@ -51,19 +51,25 @@ jobs:
           python -m pip install -v dist/*.whl
           python -m pip list
           python -m pip show -f newmap
-      - name: Run tests
+      - name: Allow core dumps
         run: |
           # Enable access to core dumps
+          sudo mkdir /cores
+          sudo chmod 777 /cores
+          sudo bash -c 'echo "/cores/%e.%p.%t" > /proc/sys/kernel/core_pattern'
+      - name: Run tests
+        run: |
+          # Allow core dumps to be generated
           ulimit -c unlimited
-          chmod -R +rwx /cores/*
           # Make sure to be running newmap from installed site-packages
           cd tests
           python -m unittest discover
           ./run_all.sh
       - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}  # Only on failure attempt to upload core dump
         with:
           name: core-dumps
-          path: /cores/*
+          path: /cores
 
   build-wheel:
     runs-on: ubuntu-latest
