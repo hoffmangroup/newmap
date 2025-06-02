@@ -237,6 +237,12 @@ def write_mappability_files(unique_count_filenames: list[Path],
                                          decimal_places)
 
 
+def check_unique_file_existence(filename: Path):
+    if not filename.exists():
+        raise FileNotFoundError(f"Unique count file does not exist: "
+                                f"{filename}")
+
+
 def main(args):
     unique_count_filenames = [Path(filename) for filename in
                               args.unique_count_files]
@@ -245,11 +251,20 @@ def main(args):
     multi_read_wig_filename = args.multi_read
     verbose = args.verbose
 
+    # Check the existance of unique files
+    for filename in unique_count_filenames:
+        check_unique_file_existence(filename)
+
     # Check to see if the read/k-mer length is valid or specified
     # If not
     if not kmer_length.isdigit():
         # Assume the read/k-mer length on the command line is a unique filename
-        unique_count_filenames.insert(0, Path(kmer_length))
+
+        # Check if it exists
+        additional_unique_filepath = Path(kmer_length)
+        check_unique_file_existence(additional_unique_filepath)
+
+        unique_count_filenames.insert(0, additional_unique_filepath)
         # Set the k-mer length to the default value
         kmer_length = DEFAULT_MAPPABILITY_READ_LENGTH
     else:
@@ -257,9 +272,9 @@ def main(args):
         kmer_length = int(kmer_length)
 
     # If neither single-read nor multi-read output files are specified
-    # Default to single-read standard output
     if (not single_read_bed_filename and
        not multi_read_wig_filename):
+        # Default to single-read standard output
         single_read_bed_filename = STDOUT_FILENAME
 
     write_mappability_files(unique_count_filenames,
