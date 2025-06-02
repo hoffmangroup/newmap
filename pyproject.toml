@@ -21,12 +21,10 @@ dependencies = [
 ]
 description = "Newmap: tools for genome and methylome mappability"
 dynamic = ["version"]
+license = "GPL-3.0-only"
 name = "newmap"
 readme = "README.md"
 requires-python = ">=3.9"
-
-[project.license]
-text = "GPL-3.0-only"
 
 [project.scripts]
 newmap = "newmap.main:parse_subcommands"
