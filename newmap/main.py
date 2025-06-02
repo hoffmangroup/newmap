@@ -189,7 +189,8 @@ def parse_subcommands():
     generate_mappability_parser.add_argument(
         "read_length",
         nargs="?",
-        default=DEFAULT_MAPPABILITY_READ_LENGTH,
+        # NB: Optionally a unique filename, so keep the type as str
+        default=str(DEFAULT_MAPPABILITY_READ_LENGTH),
         metavar="read_length",
         help="Mappability values to be calculated based on this read length. "
              f"(default is {DEFAULT_MAPPABILITY_READ_LENGTH})")
