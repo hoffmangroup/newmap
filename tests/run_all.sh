@@ -10,9 +10,10 @@ newmap index \
     data/genome.fa
 
 newmap search \
+    --verbose \
     --output-directory=unique_lengths \
     --search-range=4:10 \
     data/genome.fa
 
-newmap track unique_lengths/*
-newmap track --multi-read - 8 unique_lengths/*
+newmap track --verbose unique_lengths/*
+newmap track --verbose --multi-read - 8 unique_lengths/*
