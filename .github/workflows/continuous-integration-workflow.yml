@@ -8,6 +8,13 @@ on:
       branches: [ master ]
   pull_request:
       branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug mode with tmate session'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   install-and-test:
@@ -70,6 +77,9 @@ jobs:
         with:
           name: core-dumps
           path: /cores
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled && failure() }}
 
   build-wheel:
     runs-on: ubuntu-latest
