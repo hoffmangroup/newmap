@@ -713,8 +713,9 @@ def main(args):
 
     # If no index filename was specified
     if not index_filename:
-        # Use the basename of the fasta file
-        index_filename = Path(fasta_filename).with_suffix("."+INDEX_EXTENSION)
+        # Use the basename of the fasta file and cwd
+        index_filename = Path(fasta_filename).stem + \
+                              "." + INDEX_EXTENSION
 
     # Parse the kmer lengths
     # NB: Either comma seperated or a range seperated by a colon
