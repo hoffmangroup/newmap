@@ -4,44 +4,61 @@
 
 Newmap is a software package that efficiently identifies uniquely mappable
 regions of any genome. It accomplishes this task by outputting read lengths at
-every position that are unique to that genome. From these ranges of values, the
-single-read mappability and the multi-read mappability for a specific read
-length can be generated.
+every position that are unique to that genome. From the range of unique read
+lengths produced, the single-read mappability and the multi-read mappability
+for a specific read length can be generated.
 
-Newmap can search for minimum k-mer/read lengths for specific values, or entire
-continuous ranges using a binary search method allowing for computing all
-possible minimum unique k-mer/read lengths for any sequence.
+Newmap can search for unique k-mer/read lengths on specific values, or entire
+continuous ranges using a binary search method allowing for finding the
+minimum possible unique k-mer/read length.
 
 Newmap requires a CPU that supports the AVX2 instruction set.
+
+OpenMP is required for parallel processing.
+
+## Documentation / Read The Docs
+The latest for Newmap is available on [Read the Docs](https://newmap.readthedocs.io).
 
 ## Quick start
 
 ### Installation
-To install Newmap:
+
+#### Python Package Index (PyPI)
 ```python
 pip install newmap
 ```
-OpenMP is required for parallel processing.
 
-### Create an index for a genome
+#### Bioconda
 ```bash
-newmap generate-index genome.fa
+conda install newmap
 ```
-By default this creates an `index.awfmi` file in the current directory.
 
-### Find the minimum unique k-mer lengths for a chromosome
-For chromosome 1, and lengths ranging from 20 to 200:
-```bash
-newmap unique-lengths --kmer-batch-size 20000000 --thread-count 4 20:200 index.awfmi chr1.fna.gz
-```
-This will create a `chr1.unique.uint8` file in the current directory.
+### Usage
 
-### Convert the unique lengths to mappability output files
-For k-mer lengths of 24:
+#### Create an index for a genome
 ```bash
-newmap generate-mappability -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed 24 chr1.unique.uint8
+newmap index genome.fa
 ```
-The resulting BED file will be the single read mappbility, and the WIG file will be the multi-read mappability.
+By default this will create a `genome.awfmi` file in the current directory.
+
+#### Find the minimum unique k-mer lengths for the genome using the index
+Searching the entire genome, using 20 threads, printing status information, and
+searching lengths ranging from 20 to 200:
+```bash
+newmap search --num-threads=20 --search-range=20:200 --output-directory=unique_lengths genome.fa
+```
+This will create `*.unique.uint8` files (one for each sequence ID) in the `unique_lengths` directory.
+
+#### Convert the unique lengths to mappability output files
+To output single and multi-read mappability for a 24 bp read length:
+```bash
+newmap track --single-read=24.bed --multi-read=24.wig 24 unique_lengths/*.unique.uint8
+```
+For both single-read and multi-read mappability, this will generate a single
+file that contains the mappability for all sequences listed in the
+`unique_lengths` directory.
+The resulting BED file will be the single read mappability, and the WIG file
+will be the multi-read mappability.
 
 
 Credits
