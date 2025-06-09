@@ -45,7 +45,7 @@ By default this will create a `genome.awfmi` file in the current directory.
 Searching the entire genome, using 20 threads, printing status information, and
 searching lengths ranging from 20 to 200 bp:
 ```bash
-newmap search --num-threads=20 --search-range=20:200 --output-directory=unique_lengths genome.fa
+newmap search --verbose --num-threads=20 --search-range=20:200 --output-directory=unique_lengths genome.fa
 ```
 This will create `*.unique.uint8` files (one for each sequence ID) in the `unique_lengths` directory.
 
