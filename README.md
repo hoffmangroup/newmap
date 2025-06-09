@@ -35,22 +35,22 @@ conda install newmap
 
 ### Usage
 
-#### Create an index for a genome
+#### 1. Create an index for a genome
 ```bash
 newmap index genome.fa
 ```
 By default this will create a `genome.awfmi` file in the current directory.
 
-#### Find the minimum unique k-mer lengths for the genome using the index
+#### 2. Find the minimum unique k-mer lengths for the genome using the index
 Searching the entire genome, using 20 threads, printing status information, and
-searching lengths ranging from 20 to 200:
+searching lengths ranging from 20 to 200 bp:
 ```bash
 newmap search --num-threads=20 --search-range=20:200 --output-directory=unique_lengths genome.fa
 ```
 This will create `*.unique.uint8` files (one for each sequence ID) in the `unique_lengths` directory.
 
-#### Convert the unique lengths to mappability output files
-To output single and multi-read mappability for a 24 bp read length:
+#### 3. Convert the unique lengths to mappability tracks
+To output single-read and multi-read mappability for a 24 bp read length:
 ```bash
 newmap track --single-read=24.bed --multi-read=24.wig 24 unique_lengths/*.unique.uint8
 ```
