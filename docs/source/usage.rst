@@ -1,12 +1,24 @@
 Usage
 =====
 
-Newmap allows you to create a FM-index for your sequence of interest, then
-generate k-mers from the same sequence to count their occurances on the index.
-Specifically it attempts to find a minimum unique count 1 for ranges of k.
+Newmap is set of tools for quantifying mappability for any sequence. It
+accomplishes this by finding unique read/k-mer lengths at every position in
+your sequence. From these unique lengths, both single-read and multi-read
+mappability can be generated for a specific read length.
+
+To produce mappability tracks, the following steps are performed:
+
+1. Create an FM-index for the sequence of interest.
+2. Search and record unique read/k-mer lengths from a specified range for each
+   position in your sequence. This search is done by counting the number of
+   "aligned reads" to the indexed sequence.
+3. Generate mappability tracks from the unique read/k-mer lengths for a
+   specified read length.
+
 These unique counts are stored in a ``.unique`` file which is a binary file
-containing integers of the minimum unique length found. These files can be used
-to generate mappability data for a give k-mer length.
+containing integers of the minimum unique length found from the search range.
+The single-read mappability is stored in a BED file, while the multi-read
+mappability is stored in a WIG file.
 
 Newmap requires a CPU with AVX2 support, and has only been tested on Linux.
 
@@ -52,17 +64,17 @@ Create an index for a reference sequence (genome.fa)
 ----------------------------------------------------
 .. code-block:: console
 
-   $ newmap generate-index genome.fa
+   $ newmap index genome.fa
 
-By default this creates an ``index.awfmi`` file in the current directory which
-is the index to count occurances of k-mers on.
+By default this creates an ``genome.awfmi`` file in the current directory
+which is the index to count occurances of k-mers on.
 
 
-Find the minimum unique k-mer lengths for a chromosome (chr1.fna.gz)
+Find unique k-mer lengths for a chromosome (chr1.fna.gz)
 --------------------------------------------------------------------
 .. code-block:: console
 
-    $ newmap unique-lengths --kmer-batch-size 20000000 --thread-count 4 20:200 index.awfmi chr1.fna.gz
+    $ newmap search --thread-count 4 --search-range=20:200 genome.awfmi chr1.fna.gz
 
 This will create a ``.unique`` (e.g. ``chr1.unique.uint8``) binary file
 containing integers of the minimum unique k-mer length found in the lengths
@@ -76,7 +88,7 @@ To create mappability data for 24-mers:
 
 .. code-block:: console
 
-    $ newmap generate-mappability -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed 24 chr1.unique.uint8
+    $ newmap search --multi-read=k24_multiread_mappability.wig --single-read=k24_singleread_mappability.bed 24 chr1.unique.uint8
 
 The resulting BED file will be the single-read mappability for chr1, and the
 WIG file will be the multi-read mappability.

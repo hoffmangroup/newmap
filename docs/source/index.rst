@@ -6,10 +6,10 @@
 Newmap documentation
 ====================
 
-**Newmap** is a set of tools for quantifying mappability for any sequence. It
-accomplishes this by looking for k-mers that will uniquely map to all positions
-in your sequence. For a given length k, Newmap can then output a single-read
-mappability BED file and/or a multi-read mappability wig file.
+**Newmap** is a set of tools for quantifying mappability for any sequence.
+Newmap records mers of length k if k is unique across the entire sequence. From
+these unique lengths, at given length k, Newmap can then output a single-read
+mappability BED file and a multi-read mappability WIG file.
 
 Contents
 --------

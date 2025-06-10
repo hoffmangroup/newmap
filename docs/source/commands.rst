@@ -6,31 +6,33 @@ Commands
 All commands start with the ``newmap`` prefix. Help with is available for each
 command by running ``newmap <command> --help``.
 
-.. _generate-index:
+.. _index:
 
 --------------
-generate-index
+index
 --------------
 Generates an index file for a given sequence file.
 
+Positional Arguments
+--------------------
+- `fasta_file`: The name of the input sequence file to generate an index for. Required.
+
 Options
 -------
-- `index-file`: The name of the index file to generate. Defaults to index.awfmi.
+- `output`: The name of the index file to generate. Defaults to the name of the
+  sequence file with the extension replaced with `.awfmi`. If the output file
+  already exists, it will be overwritten.
 
 FM-index parameters
 -------------------
 - `suffix-array-compression-ratio`: The compression ratio of the suffix array. Defaults to 8.
 - `kmer-length-in-seed-table`: The length of the k-mer in the seed table. Defaults to 12.
 
-Positional Arguments
---------------------
-- `sequence-file`: The name of the input sequence file to generate an index for. Required.
-
 Example:
 
 .. code-block:: console
 
-    $ newmap generate-index --index-file=hg38.awfmi hg38.fa
+    $ newmap generate-index hg38.fa
 
 This will generate an index file named `hg38.awfmi` for the sequence `hg38.fa`.
 
@@ -47,80 +49,87 @@ searches in the index. Each increase by 1, multiplies the memory usage of the
 index by 4.
 
 
-.. _unique-lengths:
+.. _search:
 
 --------------
-unique-lengths
+search
 --------------
-Generates a binary file containing the minimum unique lengths of sequence found
-to be unique at each position from a given range of k-mer lengths. See the
+Generates a binary file containing the unique lengths of sequence found at each
+position from a given range of read/k-mer lengths. See the
 :ref:`unique-file-format` for details on the file output.
 
-Options
--------
+Positional Arguments
+--------------------
+- `fasta_file`: The name of the fasta file containing sequence(s) where each
+  sequence ID will have a ``unique`` file generated. Must be equal to or a
+  subset of the sequence used to generate the index used for ``index-file``.
+- `index_file`: The name of the index file to use for searching for unique
+  sequences. Defaults to the name of the fasta file with the extension replaced
+  with `.awfmi`.
+
+Output Options
+--------------
+- `search-range`: The range of k-mer lengths to search for unique sequences. A
+  colon seperated pair of values specifies a continuous range. A comma
+  seperated list specifies specific lengths to search.
+- `output-directory`: Directory to write the binary files containing the
+  'unique' lengths to. Defaults to the current directory.
+- `include-sequences`: A comma separated list of sequence IDs to include in the
+  search for unique sequences from the `fasta_file` parameter. If not
+  specified, all sequences will be searched. Sequence IDs specified that do not
+  exist in the `fasta_file` will have no effect and will be ignored. Cannot be
+  used with `exclude-sequences`.
+- `exclude-sequences`: A comma separated list of sequence IDs to exclude in the
+  search for unique sequences from the `fasta_file` parameter. If not
+  specified, all sequences will be searched. Sequence IDs specified that do not
+  exist in the `fasta_file` will have no effect and will be ignored. Cannot be
+  used with `include-sequences`.
+- `verbose`: Print verbose output. Includes summary statistics at end of each
+  sequence. Default is False.
+
+Performance Options
+-------------------
 - `initial-search-length`: The initial k-mer length to search for unique
   sequences. Only valid when the set of lengths of k-mer lengths is a
   continuous range with the ``kmer-lengths`` postional argument (which is a
   pair of values separated by a colon). Useful to use when the majority of
   largest minimum unique lengths are likely to be much smaller the maximum
   search length from your specified range.
-- `include-sequences`: A comma separated list of sequence IDs to include in the
-  search for unique sequences from the `fasta-file` parameter. If not
-  specified, all sequences will be searched. Sequence IDs specified that do not
-  exist in the `fasta-file` will have no effect and will be ignored. Cannot be
-  used with `exclude-sequences`.
-- `exclude-sequences`: A comma separated list of sequence IDs to exclude in the
-  search for unique sequences from the `fasta-file` parameter. If not
-  specified, all sequences will be searched. Sequence IDs specified that do not
-  exist in the `fasta-file` will have no effect and will be ignored. Cannot be
-  used with `include-sequences`.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
   a time per sequence ID. Useful for controlling memory requirements. Default
-  is 1000000.
-- `thread-count`: The number of threads to use for counting on the index.
+  is 10000000.
+- `num-threads`: The number of threads to use for counting on the index.
   Default is 1.
-- `verbose`: Print verbose output. Includes summary statistics at end of each
-  sequence. Default is False.
-
-Positional Arguments
---------------------
-- `kmer-lengths`: The range of k-mer lengths to search for unique sequences. A
-  colon seperated pair of values specifies a continuous range. A comma
-  seperated list specifies specific lengths to search.
-- `index-file`: The name of the index file to use for searching for unique
-  sequences.
-- `fasta-file`: The name of the fasta file containing sequence(s) where each
-  sequence ID will have a ``unique`` file generated. Must be equal to or a
-  subset of the sequence used to generate the index used for ``index-file``.
 
 Example:
 
 .. code-block:: console
 
-    $ newmap unique-lengths --kmer-lengths 20:200 hg38.awfmi chr1.fna
+    $ newmap search --search-range=20:200 hg38.awfmi chr1.fna
 
 This will generate a "unique" binary file from the sequence with it's id (e.g.
 ``chr1``) with the suffix of the underyling data type (``chr1.unique.uint8``)
-containing the minimum unique length found from the given range of k-mer
+containing the minimum unique length found from the given range of read/k-mer
 lengths of 20 to 200 bp long.
 
 K-mer search ranges
 ^^^^^^^^^^^^^^^^^^^
 
-The `kmer-lengths` parameter can be a comma seperated list of k-mer lengths or
+The `search-range` parameter can be a comma seperated list of k-mer lengths or
 a colon seperated range. A comma seperated list will be linearly searched and
 is assumed to be ordered from smallest to largest. It is recommended to use
 this method when only a few k-mer lengths are needed. A colon seperated range
 will have `all` lengths inclusively searched for using a binary search method.
 As a result the range of k-mer lengths can increase significantly with only a
-logarithmic increase in compute time.
+roughly logarithmic increase in compute time.
 
-The verbose output will print statistics such as the minimum and maximum k-mer
-lengths that were found to be unique from the specified range. This can be
-useful as a guideline for future search ranges on other sequences.
+The verbose output will print statistics such as the minimum and maximum
+read/k-mer lengths that were found to be unique from the specified range. This
+can be useful as a guideline for future search ranges on other sequences.
 Notably if your the largest k-mer length found is much smaller than the maximum
 length and your minimum is larger than your (colon seperated) range, it
-signifies that the sequence has likely been exhaustively searched.
+signifies that the sequence has likely, but not guaranteed, to have been
+exhaustively searched.
 
 Ambiguous bases
 ^^^^^^^^^^^^^^^
@@ -131,48 +140,52 @@ an equivalent base
 Newmap takes the approach of only permitting ACGT bases and their lowercase
 soft-masked equivalent conventionally introduced by software such as
 `RepeatMasker <https://www.repeatmasker.org>`_. All other character codes are
-treated as ambiguous bases and are excluded from the search for unique minimum
-length k-mers.
+treated as ambiguous bases and are excluded from the search for unique
+length reads/k-mers.
 
 Threading
 ^^^^^^^^^
 
-The threading option only applies to the counting of the k-mers in the index.
-It has `close to linear performance on counting up to 20
+The threading option only applies to the counting the occurences of k-mers in
+the index. It has `close to linear performance on counting up to 20
 <https://almob.biomedcentral.com/articles/10.1186/s13015-021-00204-6#Sec23>`_
 with some diminishing returns afterwards.
 
 
-.. _generate-mappability:
+.. _track:
 
 --------------------
-generate-mappability
+track
 --------------------
-Generates mappability files from one or more given ``unique`` files (see
+Generates mappability tracks from one or more given ``unique`` files (see
 :ref:`unique-file-format`). There are two types of mappability files that can
 be generated:
 
 1. Single-read mappability (see :ref:`single-read-mappability`)
 2. Multi-read mappability (see :ref:`multi-read-mappability`)
 
+Positional Arguments
+--------------------
+- `read_length`: The read length to generate mappability tracks for. Defaults
+  to 24.
+- `unique_count_files`: One or more unique count files to generate mappability
+  from. The resulting mappability from each unique file will be appended to
+  files specified by the ``single-read-bed-file`` and ``multi-read-wig-file``
+  options.
+
 Options
 -------
 
-- `single-read-bed-file`: The name of the BED file to write the single-read mappability to. Specify ``-`` for ``stdout``.
-- `multi-read-wig-file`: The name of the WIG file to write the multi-read mappability to. Specify ``-`` for ``stdout``.
+- `single-read-bed-file`: The name of the BED file to write the single-read
+  mappability to. Specify ``-`` for ``stdout``. Defaults to `-` if
+  `--multi-read` is not specified, otherwise nothing.
+- `multi-read-wig-file`: The name of the WIG file to write the multi-read
+   mappability to. Specify ``-`` for ``stdout``.
 - `verbose`: Print verbose output. Default is False.
 
 .. note::
 
     Only ``single-read-bed-file`` or ``multi-read-wig-file`` can output to ``stdout`` when both are specified on the command line.
-
-Positional Arguments
---------------------
-- `kmer-length`: The length of the k-mer to use for mappability.
-- `unique_count_files`: One or more unique count files to generate mappability
-  from. The resulting mappability from each unique file will be appended to
-  files specified by the ``single-read-bed-file`` and ``multi-read-wig-file``
-  options.
 
 
 Mappability datasets
@@ -209,4 +222,4 @@ Example:
 
 .. code-block:: console
 
-    $ newmap generate-mappability -m k24_multiread_mappability.wig -s k24_singleread_mappability.bed 24 chr*.unique.uint8
+    $ newmap track --multi-read=k24_multiread_mappability.wig -single-read=k24_singleread_mappability.bed 24 chr*.unique.uint8
