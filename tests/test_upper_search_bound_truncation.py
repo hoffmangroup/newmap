@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy import testing as npt
 
-from newmap.unique_counts import update_upper_search_bound
+from newmap.search import update_upper_search_bound
 
 
 class TestUpperBoundChange(unittest.TestCase):

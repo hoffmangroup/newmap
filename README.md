@@ -16,8 +16,10 @@ Newmap requires a CPU that supports the AVX2 instruction set.
 
 OpenMP is required for parallel processing.
 
-## Documentation / Read The Docs
+## Documentation
 The latest for Newmap is available on [Read the Docs](https://newmap.readthedocs.io).
+
+All commands have a `--help` option to provide additional usage information.
 
 ## Quick start
 

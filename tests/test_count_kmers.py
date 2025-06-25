@@ -6,7 +6,7 @@ from util import TEST_DATA_PATH
 from newmap._c_newmap_count_kmers import count_kmers, count_kmers_from_sequence
 from newmap.main import (DEFAULT_COMPRESSION_RATIO,
                          DEFAULT_SEED_LENGTH)
-from newmap.generate_index import generate_fm_index
+from newmap.index import generate_fm_index
 
 
 class TestCountKmers(unittest.TestCase):

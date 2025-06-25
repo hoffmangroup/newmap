@@ -2,9 +2,9 @@ from argparse import ArgumentParser
 from importlib.metadata import version
 import sys
 
-from newmap import generate_index, unique_counts, unique_counts_conversion
+from newmap import index, search, track
 from newmap.util import DEFAULT_MAPPABILITY_READ_LENGTH, INDEX_EXTENSION
-from newmap.unique_counts_conversion import STDOUT_FILENAME
+from newmap.track import STDOUT_FILENAME
 
 # Will throw PackageNotFoundError if package is not installed
 __version__ = version("newmap")
@@ -46,7 +46,7 @@ def parse_subcommands():
     generate_index_parser = subparsers.add_parser(
                             INDEX_SUBCOMMAND,
                             help="Create an FM index from sequences")
-    generate_index_parser.set_defaults(func=generate_index.main)
+    generate_index_parser.set_defaults(func=index.main)
 
     # TODO: Consider changing to -i and -o for input and output
     generate_index_parser.add_argument(
@@ -89,7 +89,7 @@ def parse_subcommands():
                             help="Find the shortest unique sequence length "
                                  "at each position in sequences.")
 
-    unique_length_parser.set_defaults(func=unique_counts.main)
+    unique_length_parser.set_defaults(func=search.main)
 
     unique_length_parser.add_argument(
         "fasta_file",
@@ -184,7 +184,7 @@ def parse_subcommands():
            "unique sequence lengths.")
 
     generate_mappability_parser.set_defaults(
-        func=unique_counts_conversion.main)
+        func=track.main)
 
     generate_mappability_parser.add_argument(
         "read_length",

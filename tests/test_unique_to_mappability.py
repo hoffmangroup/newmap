@@ -6,9 +6,9 @@ from util import TEST_DATA_PATH
 
 from newmap.main import (DEFAULT_COMPRESSION_RATIO,
                          DEFAULT_SEED_LENGTH)
-from newmap.generate_index import generate_fm_index
-from newmap.unique_counts import write_unique_counts
-from newmap.unique_counts_conversion import write_mappability_files
+from newmap.index import generate_fm_index
+from newmap.search import write_unique_counts
+from newmap.track import write_mappability_files
 
 
 class TestCountKmers(unittest.TestCase):

@@ -8,8 +8,8 @@ import numpy as np
 
 from newmap.main import (DEFAULT_COMPRESSION_RATIO,
                          DEFAULT_SEED_LENGTH)
-from newmap.generate_index import generate_fm_index
-from newmap.unique_counts import write_unique_counts
+from newmap.index import generate_fm_index
+from newmap.search import write_unique_counts
 
 # Expected minimum unique lengths at each position
 # NB: In order to manually count correctly, it is important to remember to
@@ -36,6 +36,7 @@ class TestCountKmers(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # TODO: Clean up unique files created during the test
         cls.genome_index_file.close()
 
     def test_binary_search(self):
