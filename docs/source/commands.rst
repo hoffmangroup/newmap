@@ -32,7 +32,7 @@ Example:
 
 .. code-block:: console
 
-    $ newmap generate-index hg38.fa
+    $ newmap index hg38.fa
 
 This will generate an index file named `hg38.awfmi` for the sequence `hg38.fa`.
 
