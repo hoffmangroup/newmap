@@ -39,8 +39,5 @@ jobs:
       run: |
         python -m cibuildwheel --output-dir wheelhouse
     - name: Publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         twine upload wheelhouse/*
