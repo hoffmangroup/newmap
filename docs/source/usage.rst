@@ -88,7 +88,7 @@ To create mappability data for 24-mers:
 
 .. code-block:: console
 
-    $ newmap search --multi-read=k24_multiread_mappability.wig --single-read=k24_singleread_mappability.bed 24 chr1.unique.uint8
+    $ newmap track --multi-read=k24_multiread_mappability.wig --single-read=k24_singleread_mappability.bed 24 chr1.unique.uint8
 
 The resulting BED file will be the single-read mappability for chr1, and the
 WIG file will be the multi-read mappability.

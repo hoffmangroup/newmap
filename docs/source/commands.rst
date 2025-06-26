@@ -96,7 +96,7 @@ Performance Options
   largest minimum unique lengths are likely to be much smaller the maximum
   search length from your specified range.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
-  a time per sequence ID. Useful for controlling memory requirements. Default
+  a time per sequence ID. Useful for conetrolling memory requirements. Default
   is 10000000.
 - `num-threads`: The number of threads to use for counting on the index.
   Default is 1.
@@ -170,22 +170,22 @@ Positional Arguments
   to 24.
 - `unique_count_files`: One or more unique count files to generate mappability
   from. The resulting mappability from each unique file will be appended to
-  files specified by the ``single-read-bed-file`` and ``multi-read-wig-file``
+  files specified by the ``single-read`` and ``multi-read``
   options.
 
 Options
 -------
 
-- `single-read-bed-file`: The name of the BED file to write the single-read
+- `single-read`: The name of the BED file to write the single-read
   mappability to. Specify ``-`` for ``stdout``. Defaults to `-` if
-  `--multi-read` is not specified, otherwise nothing.
-- `multi-read-wig-file`: The name of the WIG file to write the multi-read
+  `multi-read` is not specified, otherwise nothing.
+- `multi-read`: The name of the WIG file to write the multi-read
    mappability to. Specify ``-`` for ``stdout``.
 - `verbose`: Print verbose output. Default is False.
 
 .. note::
 
-    Only ``single-read-bed-file`` or ``multi-read-wig-file`` can output to ``stdout`` when both are specified on the command line.
+    Only ``single-read`` or ``multi-read`` can output to ``stdout`` when both are specified on the command line.
 
 
 Mappability datasets
@@ -222,4 +222,4 @@ Example:
 
 .. code-block:: console
 
-    $ newmap track --multi-read=k24_multiread_mappability.wig -single-read=k24_singleread_mappability.bed 24 chr*.unique.uint8
+    $ newmap track --multi-read=k24_multiread_mappability.wig --single-read=k24_singleread_mappability.bed 24 chr*.unique.uint8
