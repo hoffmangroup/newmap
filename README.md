@@ -12,9 +12,14 @@ Newmap can search for unique k-mer/read lengths on specific values, or entire
 continuous ranges using a binary search method allowing for finding the
 minimum possible unique k-mer/read length.
 
+## Prerequisites
 Newmap requires a CPU that supports the AVX2 instruction set.
 
 OpenMP is required for parallel processing.
+
+Newmap requires Python 3.9 or later. It also requires numpy and the
+AvxWindowFMIndex library both of which are installed automatically when using
+the methods below.
 
 ## Documentation
 The latest for Newmap is available on [Read the Docs](https://newmap.readthedocs.io).
