@@ -37,8 +37,9 @@ def parse_subcommands():
         version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(
-        title="To generate mappability data, the following subcommands must "
-              "be run in order",
+        title="Use the following subcommands each with their own options "
+              "including --help. To generate mappability data, the following "
+              "subcommands must be run in order",
         metavar="",
         required=True)
 
@@ -87,7 +88,7 @@ def parse_subcommands():
     unique_length_parser = subparsers.add_parser(
                             UNIQUE_LENGTHS_SUBCOMMAND,
                             help="Find the shortest unique sequence length "
-                                 "at each position in sequences.")
+                                 "at each position in sequences")
 
     unique_length_parser.set_defaults(func=search.main)
 
@@ -181,7 +182,7 @@ def parse_subcommands():
     generate_mappability_parser = subparsers.add_parser(
       GENERATE_MAPPABILITY_SUBCOMMAND,
       help="Calculate single and multi-read mappability tracks from shortest "
-           "unique sequence lengths.")
+           "unique sequence lengths")
 
     generate_mappability_parser.set_defaults(
         func=track.main)
