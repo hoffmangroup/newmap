@@ -15,14 +15,18 @@ minimum possible unique k-mer/read length.
 ## Prerequisites
 Newmap requires a CPU that supports the AVX2 instruction set.
 
-OpenMP is required for parallel processing.
+Newmap requires Python 3.9 or later. It also requires numpy and the AvxWindowFMIndex
+library both of which are installed automatically when using the methods below.
 
-Newmap requires Python 3.9 or later. It also requires numpy and the
-AvxWindowFMIndex library both of which are installed automatically when using
-the methods below.
+Currently only Linux is supported, but it may be possible to build and run on
+other operating systems. Notably a compiler with OpenMP support is required
+for parallel processing. See the
+[documentation](https://newmap.readthedocs.io/en/latest/usage.html#installation)
+for more details on building from source.
 
 ## Documentation
-The latest for Newmap is available on [Read the Docs](https://newmap.readthedocs.io).
+The latest documentation for Newmap is available on [Read the
+Docs](https://newmap.readthedocs.io).
 
 All commands have a `--help` option to provide additional usage information.
 
