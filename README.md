@@ -41,7 +41,7 @@ pip install newmap
 
 #### Bioconda
 ```bash
-conda install newmap
+conda install bioconda::newmap
 ```
 
 ### Usage
