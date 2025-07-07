@@ -122,7 +122,7 @@ def write_unique_counts(fasta_filename: Path,
                 open(current_unique_filepath, "wb").close()
 
                 verbose_print(verbose,
-                              "Writing minimum unique lengths for sequence "
+                              "Writing unique lengths for sequence "
                               "ID: {}".format(sequence_segment.id.decode()))
 
             num_kmers = get_num_kmers(sequence_segment, max_kmer_length)
@@ -673,7 +673,7 @@ def print_summary_statisitcs(verbose: bool,
     if (verbose and
             total_unique_lengths_count):
         verbose_print(verbose,
-                      f"Finished writing minimum unique lengths for sequence "
+                      f"Finished writing unique lengths for sequence "
                       f"ID: {sequence_id.decode()}")
         verbose_print(verbose,
                       f"{total_unique_lengths_count} unique lengths found")
