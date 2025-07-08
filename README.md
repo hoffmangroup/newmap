@@ -46,7 +46,7 @@ conda install bioconda::newmap
 
 ### Usage
 
-#### 0. Follow along with an example test genome
+#### 0. (Optional) Follow along with an example test genome
 You can download a test genome from the Newmap repository to follow along with
 the usage example below.
 ```bash
