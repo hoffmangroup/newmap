@@ -46,6 +46,16 @@ conda install bioconda::newmap
 
 ### Usage
 
+#### 0. Follow along with an example test genome
+You can download a test genome from the Newmap repository to follow along with
+the usage example below.
+```bash
+curl -sL https://raw.githubusercontent.com/hoffmangroup/newmap/refs/heads/master/tests/data/genome.fa > genome.fa
+```
+To speed up creating the index in the following step, it is recommended to use
+options `--seed-length=1` and `--compression-ratio=1` specifically for the very
+small test genome. Otherwise it would be recommended to use the default values.
+
 #### 1. Create an index for a genome
 ```bash
 newmap index genome.fa
