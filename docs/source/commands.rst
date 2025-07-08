@@ -25,8 +25,8 @@ Options
 
 FM-index parameters
 -------------------
-- `suffix-array-compression-ratio`: The compression ratio of the suffix array. Defaults to 8.
-- `kmer-length-in-seed-table`: The length of the k-mer in the seed table. Defaults to 12.
+- `compression-ratio`: The compression ratio of the suffix array. Defaults to 8.
+- `seed-length`: The length of the k-mer in the seed table. Defaults to 12.
 
 Example:
 
@@ -41,10 +41,10 @@ FM-index technical details
 The default parameters are the recommended set to be used for matching
 dinucleotide sequences and likely do not need to be changed. The parameters may
 be changed for technical reasons trading off disk space and/or memory available
-to adjust performance. Each increase in the `suffix-array-compression-ratio`
+to adjust performance. Each increase in the `compression-ratio`
 reduces the index file size at the cost of number of operations to get a count
 on the occurances of a given k-mer. Each increase in the
-`kmer-length-in-seed-table` increases the memory required to speed up k-mer
+`seed-length` increases the memory required to speed up k-mer
 searches in the index. Each increase by 1, multiplies the memory usage of the
 index by 4.
 
