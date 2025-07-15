@@ -1,5 +1,9 @@
 # Newmap
 
+A manuscript discussing this software by Eric Roberts, and Michael M Hoffman is
+in preparation. A preprint of the paper with an updated citation will be
+updated here when available.
+
 ## Introduction
 
 Newmap is a software package that efficiently identifies uniquely mappable
@@ -82,8 +86,7 @@ The resulting BED file will be the single read mappability, and the WIG file
 will be the multi-read mappability.
 
 
-Credits
--------
+## Credits
 Newmap is a reimplementation of the output of Umap. Umap was developed by Mehran Karimzadeh.
 The repository for that implmemention is found at [https://www.github.com/hoffmangroup/umap](https://www.github.com/hoffmangroup/umap).
 Umap in turn was originally developed by Anshul Kundaje and was written in MATLAB.
