@@ -31,6 +31,7 @@ class TestCountKmers(unittest.TestCase):
                             0,  # Initial search length
                             [],  # Include chr ids
                             [],  # Exclude chr ids
+                            False,  # no reverse complement
                             cls.num_threads,
                             use_binary_search=True)
 
