@@ -67,7 +67,7 @@ Create an index for a reference sequence (genome.fa)
    $ newmap index genome.fa
 
 By default this creates an ``genome.awfmi`` file in the current directory
-which is the index to count occurances of k-mers on.
+which is the index to count occurrences of k-mers on.
 
 
 Find unique k-mer lengths for a chromosome (chr1.fna.gz)

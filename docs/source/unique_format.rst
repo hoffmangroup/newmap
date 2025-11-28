@@ -15,7 +15,7 @@ k-mer length is done with the :ref:`track` tool.
 ----------
 Data types
 ----------
-The suffix of the filename specifies the type of the underyling binary data.
+The suffix of the filename specifies the type of the underlying binary data.
 The suffix ``uint8`` specifies that each minimum length is represented with a
 single unsigned 8 bit integer (1 byte each), and ``uint16`` likewise has each
 length represented by unsigned 16 bit integer (2 bytes each). No other data is

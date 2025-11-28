@@ -2,7 +2,7 @@ Umap
 ====
 
 Newmap is intended to be a simple, faster, and easy to use replacement for the
-orignal `Umap <https://bismap.hoffmanlab.org>`_ project.
+original `Umap <https://bismap.hoffmanlab.org>`_ project.
 
 ------------------------
 Umap dataset differences

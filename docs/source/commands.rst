@@ -43,7 +43,7 @@ dinucleotide sequences and likely do not need to be changed. The parameters may
 be changed for technical reasons trading off disk space and/or memory available
 to adjust performance. Each increase in the `compression-ratio`
 reduces the index file size at the cost of number of operations to get a count
-on the occurances of a given k-mer. Each increase in the
+on the occurrences of a given k-mer. Each increase in the
 `seed-length` increases the memory required to speed up k-mer
 searches in the index. Each increase by 1, multiplies the memory usage of the
 index by 4.
@@ -91,12 +91,12 @@ Performance Options
 -------------------
 - `initial-search-length`: The initial k-mer length to search for unique
   sequences. Only valid when the set of lengths of k-mer lengths is a
-  continuous range with the ``kmer-lengths`` postional argument (which is a
+  continuous range with the ``kmer-lengths`` positional argument (which is a
   pair of values separated by a colon). Useful to use when the majority of
   largest minimum unique lengths are likely to be much smaller the maximum
   search length from your specified range.
 - `kmer-batch-size`: The maximum number of sequence positions to search for at
-  a time per sequence ID. Useful for conetrolling memory requirements. Default
+  a time per sequence ID. Useful for controlling memory requirements. Default
   is 10000000.
 - `num-threads`: The number of threads to use for counting on the index.
   Default is 1.
@@ -108,17 +108,17 @@ Example:
     $ newmap search --search-range=20:200 hg38.awfmi chr1.fna
 
 This will generate a "unique" binary file from the sequence with it's id (e.g.
-``chr1``) with the suffix of the underyling data type (``chr1.unique.uint8``)
+``chr1``) with the suffix of the underlying data type (``chr1.unique.uint8``)
 containing the minimum unique length found from the given range of read/k-mer
 lengths of 20 to 200 bp long.
 
 K-mer search ranges
 ^^^^^^^^^^^^^^^^^^^
 
-The `search-range` parameter can be a comma seperated list of k-mer lengths or
-a colon seperated range. A comma seperated list will be linearly searched and
+The `search-range` parameter can be a comma separated list of k-mer lengths or
+a colon separated range. A comma separated list will be linearly searched and
 is assumed to be ordered from smallest to largest. It is recommended to use
-this method when only a few k-mer lengths are needed. A colon seperated range
+this method when only a few k-mer lengths are needed. A colon separated range
 will have `all` lengths inclusively searched for using a binary search method.
 As a result the range of k-mer lengths can increase significantly with only a
 roughly logarithmic increase in compute time.
@@ -127,7 +127,7 @@ The verbose output will print statistics such as the minimum and maximum
 read/k-mer lengths that were found to be unique from the specified range. This
 can be useful as a guideline for future search ranges on other sequences.
 Notably if your the largest k-mer length found is much smaller than the maximum
-length and your minimum is larger than your (colon seperated) range, it
+length and your minimum is larger than your (colon separated) range, it
 signifies that the sequence has likely, but not guaranteed, to have been
 exhaustively searched.
 
