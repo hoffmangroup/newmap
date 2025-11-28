@@ -717,6 +717,11 @@ def main(args):
         index_filename = Path(fasta_filename).stem + \
                               "." + INDEX_EXTENSION
 
+    # Check that the index file exists
+    index_filename = Path(index_filename)
+    if not index_filename.is_file():
+        raise FileNotFoundError(f"Index file not found: {index_filename}")
+
     # Parse the kmer lengths
     # NB: Either comma seperated or a range seperated by a colon
     kmer_lengths = []
