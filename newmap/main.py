@@ -142,6 +142,12 @@ def parse_subcommands():
              f"(default: all sequences in {FASTA_FILE_METAVAR})")
 
     unique_length_output_parameter_group.add_argument(
+        "--norc",
+        action="store_true",
+        help="If specified, newmap will not search on the reverse-complement "
+             "reference strand.")
+
+    unique_length_output_parameter_group.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Print additional information to standard error",)

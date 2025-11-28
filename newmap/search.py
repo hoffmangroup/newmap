@@ -25,6 +25,7 @@ def write_unique_counts(fasta_filename: Path,
                         initial_search_length: int,
                         include_sequence_ids: list[bytes],
                         exclude_sequence_ids: list[bytes],
+                        skip_reverse_complement: bool,
                         num_threads: int,
                         use_binary_search=False,
                         output_directory: Path = Path("."),
@@ -136,6 +137,7 @@ def write_unique_counts(fasta_filename: Path,
                                   min_kmer_length,
                                   max_kmer_length,
                                   initial_search_length,
+                                  skip_reverse_complement,
                                   num_threads,
                                   data_type,  # type: ignore
                                   verbose)
@@ -145,6 +147,7 @@ def write_unique_counts(fasta_filename: Path,
                                   sequence_segment,
                                   kmer_lengths,
                                   num_kmers,
+                                  skip_reverse_complement,
                                   num_threads,
                                   data_type,  # type: ignore
                                   verbose)
@@ -207,6 +210,7 @@ def binary_search(index_filename: Path,
                   min_kmer_length: int,
                   max_kmer_length: int,
                   initial_search_length: int,
+                  skip_reverse_complement: bool,
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
@@ -292,6 +296,7 @@ def binary_search(index_filename: Path,
                                      kmer_indices.tolist(),
                                      current_length_query[
                                         kmer_indices].tolist(),
+                                     skip_reverse_complement,
                                      num_threads)
 
         # Assert that the number of indices to count and the number of counts
@@ -368,6 +373,7 @@ def linear_search(index_filename: Path,
                   sequence_segment: SequenceSegment,
                   kmer_lengths: list[int],
                   num_kmers: int,
+                  skip_reverse_complement,
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
@@ -429,6 +435,7 @@ def linear_search(index_filename: Path,
                                      sequence_segment.data,
                                      kmer_indices.tolist(),
                                      max_kmer_query_lengths,
+                                     skip_reverse_complement,
                                      num_threads)
 
         # Assert that the number of indices to count and the number of counts
@@ -460,6 +467,7 @@ def get_kmer_counts(index_filename: Path,
                     sequence_data: bytes,
                     index_list: list[int],
                     kmer_lengths: list[int],
+                    skip_reverse_complement: bool,
                     num_threads: int) -> npt.NDArray[np.uint32]:
 
     # Count the occurences of kmers on the forward strand
@@ -471,24 +479,25 @@ def get_kmer_counts(index_filename: Path,
                             num_threads),
                           dtype=np.uint32)
 
-    # Count the occurrences of kmers on the reverse complement strand
-    # TODO: Add no reverse complement option to skip this to
-    # support bisulfite treated kmer counting
-    # TODO: Add option for a complement table
-    reverse_complement_sequence = \
-        sequence_data.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+    # If we are not skipping the reverse complement strand (default)
+    if not skip_reverse_complement:
+        # Count the occurrences of kmers on the reverse complement strand
+        # TODO: Add option for a complement table
+        reverse_complement_sequence = \
+            sequence_data.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
 
-    sequence_data_length = len(sequence_data)
-    reverse_index_list = [sequence_data_length - i - kmer_length
-                          for i, kmer_length in zip(index_list, kmer_lengths)]
+        sequence_data_length = len(sequence_data)
+        reverse_index_list = [sequence_data_length - i - kmer_length
+                              for i, kmer_length in zip(index_list,
+                                                        kmer_lengths)]
 
-    count_list += np.array(count_kmers_from_sequence(
-                             str(index_filename),
-                             reverse_complement_sequence,
-                             reverse_index_list,
-                             kmer_lengths,
-                             num_threads),
-                           dtype=np.uint32)
+        count_list += np.array(count_kmers_from_sequence(
+                                 str(index_filename),
+                                 reverse_complement_sequence,
+                                 reverse_index_list,
+                                 kmer_lengths,
+                                 num_threads),
+                               dtype=np.uint32)
 
     # If any element in the count list is 0
     if np.any(count_list == 0):
@@ -698,6 +707,7 @@ def main(args):
     initial_search_length = args.initial_search_length
     include_sequences_arg = args.include_sequences
     exclude_sequences_arg = args.exclude_sequences
+    skip_reverse_complement = args.norc
     num_threads = args.num_threads
     verbose = args.verbose
 
@@ -773,6 +783,7 @@ def main(args):
                         initial_search_length,
                         include_sequence_ids,
                         exclude_sequence_ids,
+                        skip_reverse_complement,
                         num_threads,
                         use_binary_search,
                         output_directory,
