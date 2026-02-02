@@ -35,6 +35,24 @@ static PyObject* py_generate_fm_index(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    if(returnCode == AwFmAllocationFailure){
+        PyErr_SetString(PyExc_MemoryError,
+            "Could not allocate enough memory to create index\n");
+        return NULL;
+    }
+
+    if(returnCode == AwFmFileAlreadyExists){
+        PyErr_SetString(PyExc_FileExistsError,
+            "Index file already exists at given location\n");
+        return NULL;
+    }
+
+    if(returnCode == AwFmFileWriteFail){
+        PyErr_SetString(PyExc_OSError,
+            "Could not write index file\n");
+        return NULL;
+    }
+
     /* Return None in Python */
     Py_RETURN_NONE;
 }
