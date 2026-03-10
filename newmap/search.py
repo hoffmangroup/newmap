@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 from math import ceil, log2
 from pathlib import Path
 from typing import Union
@@ -12,14 +13,16 @@ from newmap.fasta import SequenceSegment, sequence_segments
 
 KMER_RANGE_SEPARATOR = ":"
 SEQUENCE_ID_SEPARATOR = ","
+INDEX_FILE_SEPARATOR = ","
+FASTA_FILE_SEPARATOR = ","
 
 COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGTacgt', b'TGCAtgca')
 ALLOWED_BASES = b'ACGTactg'
 UNIQUE_COUNT_FILENAME_FORMAT = "{}.unique.{}"
 
 
-def write_unique_counts(fasta_filename: Path,
-                        index_filename: Path,
+def write_unique_counts(fasta_filenames: list[Path],
+                        index_filenames: list[Path],
                         kmer_batch_size: int,
                         kmer_lengths: list[int],
                         initial_search_length: int,
@@ -56,8 +59,10 @@ def write_unique_counts(fasta_filename: Path,
     # or exclude sequence IDs are too strict
     sequence_processed = False
 
-    # NB: We open the file in binary mode to get read-only bytes
-    with optional_gzip_open(fasta_filename, "rb") as fasta_file:
+    with ExitStack() as stack:
+        fasta_files = [stack.enter_context(optional_gzip_open(filename, "rb"))
+                       for filename in fasta_filenames]
+
         # Allow a lookahead on the last kmer to include the final dinucleotide
         # in the sequence buffer
         lookahead_length = max(kmer_lengths) - 1
@@ -80,9 +85,23 @@ def write_unique_counts(fasta_filename: Path,
         current_unique_filepath = Path("")
 
         # For each sequence buffer from the fasta file
-        for sequence_segment in sequence_segments(fasta_file,
-                                                  requested_sequence_length,
-                                                  lookahead_length):
+
+        # Create a list iterable sequences for each fasta file
+        sequences = [sequence_segments(
+                     fasta_file,  # type: ignore
+                     requested_sequence_length,
+                     lookahead_length)
+                     for fasta_file in fasta_files]
+
+        # For each list of sequence segments from each corresponding fasta file
+        # NB: Where each list will contain the nth sequence segment from each
+        # fasta file
+        for sequence_segment_list in zip(*sequences):
+            # NB: We assume that all sequences match in length and are in order
+            # in each fasta file
+            # NB: We only take the meta information from the first sequence
+            # file in order to process sequence IDs correctly
+            sequence_segment = sequence_segment_list[0]
 
             # If we are on a new sequence
             if current_sequence_id != sequence_segment.id:
@@ -132,8 +151,8 @@ def write_unique_counts(fasta_filename: Path,
 
             if use_binary_search:
                 segment_unique_counts, ambiguous_count = \
-                    binary_search(index_filename,
-                                  sequence_segment,
+                    binary_search(index_filenames,
+                                  sequence_segment_list,
                                   min_kmer_length,
                                   max_kmer_length,
                                   initial_search_length,
@@ -143,8 +162,8 @@ def write_unique_counts(fasta_filename: Path,
                                   verbose)
             else:
                 segment_unique_counts, ambiguous_count = \
-                    linear_search(index_filename,
-                                  sequence_segment,
+                    linear_search(index_filenames,
+                                  sequence_segment_list,
                                   kmer_lengths,
                                   num_kmers,
                                   skip_reverse_complement,
@@ -205,8 +224,8 @@ def write_unique_counts(fasta_filename: Path,
                                  f"{exclude_sequence_ids}")
 
 
-def binary_search(index_filename: Path,
-                  sequence_segment: SequenceSegment,
+def binary_search(index_filenames: list[Path],
+                  sequences_segment: tuple[SequenceSegment],
                   min_kmer_length: int,
                   max_kmer_length: int,
                   initial_search_length: int,
@@ -214,6 +233,11 @@ def binary_search(index_filename: Path,
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
+
+    # NB: Use the first (and maybe only) sequence to determine the number of
+    # kmers and search bounds. We assume all sequences specified are equal in
+    # length and ambiguous positions
+    sequence_segment = sequences_segment[0]
 
     num_kmers = get_num_kmers(sequence_segment, max_kmer_length)
 
@@ -291,13 +315,15 @@ def binary_search(index_filename: Path,
         kmer_indices = np.nonzero(~finished_search)[0]
 
         # Get the occurences of the kmers on both strands
-        count_list = get_kmer_counts(index_filename,
-                                     sequence_segment.data,
+        count_list = get_kmer_counts(index_filenames,
+                                     [segment.data for segment in
+                                      sequences_segment],
                                      kmer_indices.tolist(),
                                      current_length_query[
                                         kmer_indices].tolist(),
                                      skip_reverse_complement,
-                                     num_threads)
+                                     num_threads,
+                                     verbose)
 
         # Assert that the number of indices to count and the number of counts
         # are equal
@@ -369,14 +395,20 @@ def binary_search(index_filename: Path,
     return unique_lengths, ambiguous_positions_skipped
 
 
-def linear_search(index_filename: Path,
-                  sequence_segment: SequenceSegment,
+def linear_search(index_filenames: list[Path],
+                  sequences_segment: tuple[SequenceSegment],
                   kmer_lengths: list[int],
                   num_kmers: int,
                   skip_reverse_complement,
                   num_threads: int,
                   data_type: Union[np.uint8, np.uint16, np.uint32],
                   verbose: bool) -> tuple[npt.NDArray[np.uint], int]:
+
+    # NB: Use the first (and maybe only) sequence to determine the number of
+    # kmers and search bounds. We assume all sequences specified are equal in
+    # length and ambiguous positions
+    sequence_segment = sequences_segment[0]
+
     # Track which kmer positions have finished searching,
     # skipping any kmers starting with an ambiguous base
     # NB: Iterating over bytes returns ints
@@ -431,12 +463,14 @@ def linear_search(index_filename: Path,
                           f"to be counted")
 
         # Count the kmer occurences on the index
-        count_list = get_kmer_counts(index_filename,
-                                     sequence_segment.data,
+        count_list = get_kmer_counts(index_filenames,
+                                     [segment.data for segment in
+                                      sequences_segment],
                                      kmer_indices.tolist(),
                                      max_kmer_query_lengths,
                                      skip_reverse_complement,
-                                     num_threads)
+                                     num_threads,
+                                     verbose)
 
         # Assert that the number of indices to count and the number of counts
         # are equal
@@ -463,41 +497,53 @@ def linear_search(index_filename: Path,
     return unique_lengths.astype(data_type), ambiguous_positions_skipped
 
 
-def get_kmer_counts(index_filename: Path,
-                    sequence_data: bytes,
+def get_kmer_counts(index_filenames: list[Path],
+                    sequences_data: list[bytes],
                     index_list: list[int],
                     kmer_lengths: list[int],
                     skip_reverse_complement: bool,
-                    num_threads: int) -> npt.NDArray[np.uint32]:
+                    num_threads: int,
+                    verbose: bool) -> npt.NDArray[np.uint32]:
 
-    # Count the occurences of kmers on the forward strand
-    count_list = np.array(count_kmers_from_sequence(
-                            str(index_filename),
-                            sequence_data,
-                            index_list,
-                            kmer_lengths,
-                            num_threads),
-                          dtype=np.uint32)
+    count_list = np.zeros(len(index_list), dtype=np.uint32)
+    # For each index (usually just one)
+    # NB: We assume a guarantee that we have > 0 indexes at this point
+    for index_filename in index_filenames:
+        verbose_print(verbose, f"Counting kmers from index: {index_filename}")
+        # For every sequence segment in the list of sequence segments for this
+        # index (usually just one)
+        for i, sequence_data in enumerate(sequences_data):
+            verbose_print(verbose, f"Counting sequence #{i+1}")
+            # Count the occurences of kmers on the forward strand
+            count_list += np.array(count_kmers_from_sequence(
+                                   str(index_filename),
+                                   sequence_data,
+                                   index_list,
+                                   kmer_lengths,
+                                   num_threads),
+                                   dtype=np.uint32)
 
-    # If we are not skipping the reverse complement strand (default)
-    if not skip_reverse_complement:
-        # Count the occurrences of kmers on the reverse complement strand
-        # TODO: Add option for a complement table
-        reverse_complement_sequence = \
-            sequence_data.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+            # If we are not skipping the reverse complement strand (default)
+            if not skip_reverse_complement:
+                # Count the occurrences of kmers on the reverse complement
+                # strand
+                # TODO: Add option for a complement table
+                # TODO: The reverse complement should only be calculated once
+                reverse_complement_sequence = \
+                    sequence_data.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
 
-        sequence_data_length = len(sequence_data)
-        reverse_index_list = [sequence_data_length - i - kmer_length
-                              for i, kmer_length in zip(index_list,
-                                                        kmer_lengths)]
+                sequence_data_length = len(sequence_data)
+                reverse_index_list = [sequence_data_length - i - kmer_length
+                                      for i, kmer_length in zip(index_list,
+                                                                kmer_lengths)]
 
-        count_list += np.array(count_kmers_from_sequence(
-                                 str(index_filename),
-                                 reverse_complement_sequence,
-                                 reverse_index_list,
-                                 kmer_lengths,
-                                 num_threads),
-                               dtype=np.uint32)
+                count_list += np.array(count_kmers_from_sequence(
+                                         str(index_filename),
+                                         reverse_complement_sequence,
+                                         reverse_index_list,
+                                         kmer_lengths,
+                                         num_threads),
+                                       dtype=np.uint32)
 
     # If any element in the count list is 0
     if np.any(count_list == 0):
@@ -510,7 +556,8 @@ def get_kmer_counts(index_filename: Path,
         problem_sequence_index = index_list[first_problem_kmer_index]
         problem_sequence_length = kmer_lengths[first_problem_kmer_index]
 
-        first_problem_kmer = sequence_data[
+        # Assume first sequence in the list of sequence is the problem sequence
+        first_problem_kmer = sequences_data[0][
             problem_sequence_index:
             problem_sequence_index+problem_sequence_length].decode("utf-8")
 
@@ -576,12 +623,14 @@ def update_upper_search_bound(upper_search_bound: npt.NDArray,
     # the length of the ambiguity mask to allow searching at the final
     # position at the maximum length
     excess_buffer_length = sequence_buffer_length - ambiguity_mask.size
+    # TODO: Remove assertion
     assert excess_buffer_length < max_search_length, \
         "Excess sequence buffer length is greater than the maximum search " \
         "length"
 
     # If all positions non-ambiguous
     # NB: Likely the most common case
+    # XXX?: Change condition ordering?
     if (~ambiguity_mask).all():
         # If there is not enough sequence buffer to search at the maximum
         # NB: There is a possibility that the maximum search range is larger
@@ -600,6 +649,8 @@ def update_upper_search_bound(upper_search_bound: npt.NDArray,
         return
     # Otherwise there is a mix of ambiguous and non-ambiguous positions
     else:
+        # TODO: Consider putting this in into its own function, e.g.
+        # `find_non_ambiguous_intervals`
         # Find the 0-based start-inclusive and end-exclusive intervals (for
         # indexing) of non-ambiguous areas including the start and end in the
         # interval list
@@ -611,6 +662,8 @@ def update_upper_search_bound(upper_search_bound: npt.NDArray,
         # Where our reference mask is True but left shift is False
         # We have the start of an non-ambiguous region
         # NB: Add 1 due to the shift
+        # TODO: Add ascii art
+        # TODO: Look at shifting so addition of 1 to indicies is not necessary
         start_indices = np.where(reference_mask & ~left_shift)[0] + 1
 
         # Where our reference mask is False but left shift is True
@@ -642,6 +695,7 @@ def update_upper_search_bound(upper_search_bound: npt.NDArray,
                 reached_end_of_buffer = True
 
         # Iterate over each start and end non-ambiguous interval
+        # XXX: numpy dstack?
         for start, end in zip(start_indices, end_indices):
             # If we are the on the last interval and are at the end of the
             # buffer
@@ -662,6 +716,7 @@ def update_upper_search_bound(upper_search_bound: npt.NDArray,
             assign_remaining_array_values(non_ambiguous_interval, new_values)
 
 
+# TODO: Change to from `assign` to `set`
 def assign_remaining_array_values(input_array: npt.NDArray,
                                   new_values: npt.NDArray):
     """Modifies the input array so the last n values are assigned the contents
@@ -699,8 +754,8 @@ def print_summary_statisitcs(verbose: bool,
 
 
 def main(args):
-    fasta_filename = args.fasta_file
-    index_filename = args.index_file
+    fasta_file_specification = args.fasta_file
+    index_file_specification = args.index_file
     kmer_batch_size = args.kmer_batch_size
     kmer_lengths_arg = args.search_range
     output_directory = args.output_directory
@@ -721,16 +776,35 @@ def main(args):
     else:
         output_directory = Path(".")
 
-    # If no index filename was specified
-    if not index_filename:
-        # Use the basename of the fasta file and cwd
-        index_filename = Path(fasta_filename).stem + \
-                              "." + INDEX_EXTENSION
+    # Process the fasta filename specificaiton into a list of Paths
+    # even if only a single fasta file is specified
+    if FASTA_FILE_SEPARATOR in fasta_file_specification:
+        fasta_filenames = [Path(filename) for filename in
+                           fasta_file_specification
+                           .split(FASTA_FILE_SEPARATOR)]
+    else:
+        fasta_filenames = [Path(fasta_file_specification)]
 
-    # Check that the index file exists
-    index_filename = Path(index_filename)
-    if not index_filename.is_file():
-        raise FileNotFoundError(f"Index file not found: {index_filename}")
+    # Process the index filename specificaiton into a list of Paths
+    # even if only a single index file is specified
+
+    # If no index filename was specified
+    if not index_file_specification:
+        # Use the basename of the (first) fasta file and cwd
+        fasta_filename = fasta_filenames[0]
+        index_filenames = [Path(fasta_filename).stem + "." + INDEX_EXTENSION]
+    elif INDEX_FILE_SEPARATOR in index_file_specification:
+        index_filenames = [Path(filename) for filename in
+                           index_file_specification
+                           .split(INDEX_FILE_SEPARATOR)]
+    else:
+        # NB: A single index filename in a list
+        index_filenames = [Path(index_file_specification)]
+
+    # Check that the index files exists
+    for index_filename in index_filenames:
+        if not index_filename.is_file():  # type: ignore
+            raise FileNotFoundError(f"Index file not found: {index_filename}")
 
     # Parse the kmer lengths
     # NB: Either comma seperated or a range seperated by a colon
@@ -776,8 +850,8 @@ def main(args):
             [s.encode() for s in
              exclude_sequences_arg.split(SEQUENCE_ID_SEPARATOR)]
 
-    write_unique_counts(Path(fasta_filename),
-                        Path(index_filename),
+    write_unique_counts(fasta_filenames,
+                        index_filenames,  # type: ignore
                         kmer_batch_size,
                         kmer_lengths,
                         initial_search_length,

@@ -20,6 +20,7 @@ DEFAULT_THREAD_COUNT = 1
 DEFAULT_KMER_SEARCH_RANGE = "20:200"
 
 FASTA_FILE_METAVAR = "fasta_file"
+INDEX_FILE_METAVAR = "index_file"
 
 INDEX_SUBCOMMAND = "index"
 UNIQUE_LENGTHS_SUBCOMMAND = "search"
@@ -95,12 +96,14 @@ def parse_subcommands():
     unique_length_parser.add_argument(
         "fasta_file",
         metavar=FASTA_FILE_METAVAR,
-        help="File of (gzipped) fasta file for kmer generation")
+        help="File of (gzipped) fasta file for kmer generation. Optionally "
+             "comma separate multiple fasta files to simultaneously process.")
 
     unique_length_parser.add_argument(
         "index_file",
         nargs="?",
-        help="File of reference index file to count occurances in. "
+        help="File of reference index file to count occurances in. Optionally "
+             "comma separate multiple index files to simulatenously count in. "
              f"(default: basename of {FASTA_FILE_METAVAR} with "
              f"the {INDEX_EXTENSION} extension)")
 
