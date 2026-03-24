@@ -71,7 +71,7 @@ jobs:
           # Make sure to be running newmap from installed site-packages
           cd tests
           python -m unittest discover
-          ./run_all.sh
+          ./test_end_to_end.sh
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}  # Only on failure attempt to upload core dump
         with:

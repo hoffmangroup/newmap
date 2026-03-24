@@ -7,7 +7,7 @@ from util import TEST_DATA_PATH
 from newmap.main import (DEFAULT_COMPRESSION_RATIO,
                          DEFAULT_SEED_LENGTH)
 from newmap.index import generate_fm_index
-from newmap.search import write_unique_counts
+from newmap.search import SearchConfig, write_unique_counts
 from newmap.track import write_mappability_files
 
 
@@ -24,16 +24,14 @@ class TestCountKmers(unittest.TestCase):
                           DEFAULT_COMPRESSION_RATIO,
                           DEFAULT_SEED_LENGTH)
 
-        write_unique_counts(Path(cls.fasta_filename),
-                            Path(cls.genome_index_filename),
-                            15,  # Batch size
-                            list(range(4, 11)),  # Kmer lengths 4 to 10
-                            0,  # Initial search length
-                            [],  # Include chr ids
-                            [],  # Exclude chr ids
-                            False,  # no reverse complement
-                            cls.num_threads,
-                            use_binary_search=True)
+        write_unique_counts(SearchConfig(
+            fasta_filepaths=[Path(cls.fasta_filename)],
+            fmindex_filepaths=[Path(cls.genome_index_filename)],
+            kmer_lengths=list(range(4, 11)),
+            kmer_batch_size=15,
+            is_binary_search=True,
+            num_threads=cls.num_threads,
+        ))
 
     @classmethod
     def tearDownClass(cls):

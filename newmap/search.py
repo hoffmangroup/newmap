@@ -1,6 +1,6 @@
 from contextlib import ExitStack
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from math import ceil, log2
 from pathlib import Path
@@ -31,6 +31,9 @@ def nil_search_log(*_: str):
 
 @dataclass(frozen=True)
 class SearchConfig:
+    # NB: All defaults here are not guaranteed to match the command line
+    # interface defaults, they are for python interface convience only
+
     # Position args
     fasta_filepaths: list[Path]
     fmindex_filepaths: list[Path]
@@ -39,22 +42,25 @@ class SearchConfig:
     kmer_lengths: list[int]
     is_binary_search: bool
 
-    use_reverse_complement: bool
-    output_directory: Path
+    use_reverse_complement: bool = True
+    output_directory: Path = Path.cwd()
 
-    include_sequence_ids: list[bytes]
-    exclude_sequence_ids: list[bytes]
+    # NB: Cannot assign mutable default arguments since they would be shared
+    # between instances so we must use default_factory to create a new list
+    # for each instance when using a frozen dataclass
+    include_sequence_ids: list[bytes] = field(default_factory=list)
+    exclude_sequence_ids: list[bytes] = field(default_factory=list)
 
     # Performance arguments
-    num_threads: int
-    kmer_batch_size: int
-    initial_search_length: int
+    num_threads: int = 1
+    kmer_batch_size: int = 1000000
+    initial_search_length: int = 0  # NB: default of none
 
     # Verbosity
     # NB: Only used when additional calculations are needed for logging
-    verbose: bool
-    # Logging function
-    log: Callable[[str], None]
+    verbose: bool = False
+    # Logging function (initialzed based on verbosity)
+    log: Callable[[str], None] = field(init=False)
 
     @classmethod
     def from_args(cls, args):
@@ -154,11 +160,6 @@ class SearchConfig:
                 [s.encode() for s in
                  exclude_sequences_arg.split(SEQUENCE_ID_SEPARATOR)]
 
-        if args.verbose:
-            logging_function = partial(verbose_print, True)
-        else:
-            logging_function = nil_search_log
-
         return cls(
                    # Position args
                    fasta_filepaths=fasta_filenames,
@@ -174,7 +175,6 @@ class SearchConfig:
                    include_sequence_ids=include_sequence_ids,
                    exclude_sequence_ids=exclude_sequence_ids,
 
-                   log=logging_function,
                    verbose=args.verbose,
 
                    # Performance arguments
@@ -182,6 +182,16 @@ class SearchConfig:
                    kmer_batch_size=args.kmer_batch_size,
                    initial_search_length=initial_search_length
         )
+
+    def __post_init__(self):
+        # Setup logging based on verbosity
+        if self.verbose:
+            logging_function = partial(verbose_print, True)
+        else:
+            logging_function = nil_search_log
+
+        # Set attribute on the object since the dataclass is frozen
+        object.__setattr__(self, "log", logging_function)
 
 
 def write_unique_counts(config: SearchConfig):

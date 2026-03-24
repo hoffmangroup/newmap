@@ -9,7 +9,7 @@ import numpy as np
 from newmap.main import (DEFAULT_COMPRESSION_RATIO,
                          DEFAULT_SEED_LENGTH)
 from newmap.index import generate_fm_index
-from newmap.search import write_unique_counts
+from newmap.search import SearchConfig, write_unique_counts
 
 # Expected minimum unique lengths at each position
 # NB: In order to manually count correctly, it is important to remember to
@@ -46,16 +46,15 @@ class TestCountKmers(unittest.TestCase):
         self.search(use_binary_search=False)
 
     def search(self, use_binary_search):
-        write_unique_counts(Path(self.fasta_filename),
-                            Path(self.genome_index_filename),
-                            15,  # Batch size
-                            list(range(4, 11)),  # Kmer lengths 4 to 10
-                            0,  # Initial search length
-                            [],  # Include chr ids
-                            [],  # Exclude chr ids
-                            False,  # no reverse complement
-                            self.num_threads,
-                            use_binary_search)
+
+        write_unique_counts(SearchConfig(
+            fasta_filepaths=[Path(self.fasta_filename)],
+            fmindex_filepaths=[Path(self.genome_index_filename)],
+            kmer_lengths=list(range(4, 11)),
+            kmer_batch_size=15,
+            is_binary_search=use_binary_search,
+            num_threads=self.num_threads,
+        ))
 
         # Check the results in chr1.unique.uint8 and chr2.unique.uint8
         chr1_results = np.fromfile('chr1.unique.uint8', dtype=np.uint8)
