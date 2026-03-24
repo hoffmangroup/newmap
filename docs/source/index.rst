@@ -7,9 +7,10 @@ Newmap documentation
 ====================
 
 **Newmap** is a set of tools for quantifying mappability for any sequence.
-Newmap records mers of length k if k is unique across the entire sequence. From
-these unique lengths, at given length k, Newmap can then output a single-read
-mappability BED file and a multi-read mappability WIG file.
+Newmap records mers of length *k* if *k* is unique across the entire sequence.
+From these unique lengths, at given length *k*, Newmap can then output a
+single-read mappability Browser Extensible Data (BED) file and a multi-read
+mappability Wiggle file.
 
 Contents
 --------
