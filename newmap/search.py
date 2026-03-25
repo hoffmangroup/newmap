@@ -457,6 +457,9 @@ def binary_search(config: SearchConfig,
 
     iteration_count = 1
 
+    # Number of sequences being searched on
+    num_sequences = len(sequence_segments)
+
     # While there are still kmers to search
     while not np.all(finished_search):
         config.log("Iteration {}".format(iteration_count))
@@ -482,9 +485,9 @@ def binary_search(config: SearchConfig,
             "Number of counted positions ({}) and number of counts ({}) " \
             "do not match".format(len(kmer_indices), len(count_list))
 
-        # Where we have counts of 1
+        # Where we have counts of 1 per sequence searched over
         unique_lengths[kmer_indices] = np.where(
-            (count_list == 1) &
+            (count_list == num_sequences) &
             # And if there is no current unique length recorded
             ((unique_lengths[kmer_indices] == 0) |
              # Or there is a smaller length found than the current min length
@@ -495,20 +498,20 @@ def binary_search(config: SearchConfig,
             # Otherwise keep the current unique length
             unique_lengths[kmer_indices])
 
-        # If we have a k-mer count of 1 and the current length queried is the
-        # same as the lower bound (i.e. can't get smaller for a unique count)
-        # This position has finished searching
+        # If we have a k-mer count of 1 per sequence and the current length
+        # queried is the same as the lower bound (i.e. can't get smaller for a
+        # unique count) This position has finished searching
         finished_search[kmer_indices] = np.where(
-            count_list == 1,
+            count_list == num_sequences,
             current_length_query[kmer_indices] ==
             lower_length_bound[kmer_indices],
             finished_search[kmer_indices])
 
-        # If we have a k-mer count > 1 and the current length queried is the
-        # same as the uppper bound (i.e. can't find a unique length or larger)
-        # This position has finished searching
+        # If we have a k-mer count > number of sequences and the current length
+        # queried is the same as the uppper bound (i.e. can't find a unique
+        # length or larger) This position has finished searching
         finished_search[kmer_indices] = np.where(
-            count_list > 1,
+            count_list > num_sequences,
             current_length_query[kmer_indices] ==
             upper_length_bound[kmer_indices],
             finished_search[kmer_indices])
@@ -519,7 +522,7 @@ def binary_search(config: SearchConfig,
         # we need to decrease our k-mer length (i.e. counts == 1)
         # Set the new upper (inclusive) bound to the current query length - 1
         upper_length_bound[kmer_indices] = np.where(
-            count_list == 1,
+            count_list == num_sequences,
             current_length_query[kmer_indices] - 1,
             upper_length_bound[kmer_indices])
 
@@ -527,7 +530,7 @@ def binary_search(config: SearchConfig,
         # we need to increase our k-mer length (i.e. counts > 1)
         # Set the new lower (inclusive) bound to the current query length + 1
         lower_length_bound[kmer_indices] = np.where(
-            count_list > 1,
+            count_list > num_sequences,
             current_length_query[kmer_indices] + 1,
             lower_length_bound[kmer_indices])
 
@@ -568,6 +571,8 @@ def linear_search(config: SearchConfig,
 
     # List of minimum lengths (where 0 is nothing was found)
     unique_lengths = np.zeros(num_kmers, dtype=np.uint32)
+
+    num_sequences = len(sequence_segments)
 
     # For each kmer length
     for kmer_length in config.kmer_lengths:
@@ -620,8 +625,9 @@ def linear_search(config: SearchConfig,
             "do not match".format(len(kmer_indices), len(count_list))
 
         unique_lengths[kmer_indices] = np.where(
-            # Where the count is 1
-            (count_list == 1) &
+            # Where the count is equal to the number of sequences to search on
+            # (i.e. a unique count per sequence specified)
+            (count_list == num_sequences) &
             # And if there is no current unique length recorded
             (unique_lengths[kmer_indices] == 0),
             # Record the minimum kmer length found if it less than the current
@@ -644,20 +650,19 @@ def get_kmer_counts(config: SearchConfig,
                     kmer_lengths: list[int]) -> npt.NDArray[np.uint32]:
 
     count_list = np.zeros(len(sequence_indices), dtype=np.uint32)
-    # For each index (usually just one)
-    # NB: We assume a guarantee that we have > 0 indexes at this point
+
+    # For every sequence segment in the list of sequence segments for this
+    # index (usually just one)
     for fmindex_filepath in config.fmindex_filepaths:
-
-        if len(config.fmindex_filepaths) > 1:
-            config.log(f"Counting kmers from index: {fmindex_filepath}")
-
-        # For every sequence segment in the list of sequence segments for this
-        # index (usually just one)
+        # For each index (usually just one)
+        # NB: We assume a guarantee that we have > 0 indexes at this point
         for i, sequence in enumerate(sequences):
 
-            if len(sequences) > 1:
-                # TODO: Print out sequence ID?
-                config.log(f"Counting sequence #{i+1}")
+            if (len(sequences) or
+               len(config.fmindex_filepaths)) > 1:
+                config.log(f"Counting k-mers from "
+                           f"{config.fmindex_filepaths[i]} in index "
+                           f"{fmindex_filepath}")
 
             # Count the occurences of kmers on the forward strand
             count_list += np.array(count_kmers_from_sequence(
