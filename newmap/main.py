@@ -145,10 +145,18 @@ def parse_subcommands():
              f"(default: all sequences in {FASTA_FILE_METAVAR})")
 
     unique_length_output_parameter_group.add_argument(
-        "--norc",
-        action="store_true",
-        help="If specified, newmap will not search on the reverse-complement "
-             "reference strand.")
+        "--strand-exclusions",
+        metavar="EXCLUDED_STRANDS",
+        default=None,
+        help="A comma separated list of strands to exclude from the search. "
+             "'norc' will exclude the reverse-complement strand. "
+             "'nofw' will exclude the forward strand. "
+             "'none' will include both strands. "
+             "Exclusion will happen in order based on the sequence and index "
+             "combination. Example: 'norc,nofw,nofw,norc' will exclude search "
+             "necessary for non-directional bisulfite mappability if sequence "
+             "and index order matches. "
+             "(default: none)")
 
     unique_length_output_parameter_group.add_argument(
         "--verbose", "-v",

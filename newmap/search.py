@@ -2,6 +2,7 @@ from contextlib import ExitStack
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
+from itertools import product
 from math import ceil, log2
 from pathlib import Path
 from typing import Union
@@ -42,7 +43,8 @@ class SearchConfig:
     kmer_lengths: list[int]
     is_binary_search: bool
 
-    use_reverse_complement: bool = True
+    use_forward: list[bool]
+    use_reverse_complement: list[bool]
     output_directory: Path = Path.cwd()
 
     # NB: Cannot assign mutable default arguments since they would be shared
@@ -71,6 +73,7 @@ class SearchConfig:
         initial_search_length = args.initial_search_length
         include_sequences_arg = args.include_sequences
         exclude_sequences_arg = args.exclude_sequences
+        strand_exclusion_arg = args.strand_exclusions
 
         # If an output directory was specified
         if output_directory:
@@ -160,6 +163,30 @@ class SearchConfig:
                 [s.encode() for s in
                  exclude_sequences_arg.split(SEQUENCE_ID_SEPARATOR)]
 
+        # The strand exclusions need to match in length to the product of
+        # length of fasta files and index files
+        num_strand_exclusions = len(fasta_filenames) * len(index_filenames)
+        # Set default to using both strands for every possible combination
+        use_forward = [True] * num_strand_exclusions
+        use_reverse_complement = [True] * num_strand_exclusions
+
+        # Parse any strand exclusion arguments
+        if strand_exclusion_arg:
+            strand_exclusion_strs = strand_exclusion_arg.split(",")
+            for i, strand_exclusion_str in enumerate(strand_exclusion_strs):
+                if strand_exclusion_str == "nofw":
+                    use_reverse_complement[i] = True
+                    use_forward[i] = False
+                elif strand_exclusion_str == "norc":
+                    use_reverse_complement[i] = False
+                    use_forward[i] = True
+                elif strand_exclusion_str == "none":
+                    use_reverse_complement[i] = True
+                    use_forward[i] = True
+                else:
+                    raise ValueError("Invalid strand exclusion argument: "
+                                     f"{strand_exclusion_str}")
+
         return cls(
                    # Position args
                    fasta_filepaths=fasta_filenames,
@@ -169,7 +196,8 @@ class SearchConfig:
                    kmer_lengths=kmer_lengths,
                    is_binary_search=use_binary_search,
 
-                   use_reverse_complement=not args.norc,
+                   use_forward=use_forward,
+                   use_reverse_complement=use_reverse_complement,
                    output_directory=output_directory,
 
                    include_sequence_ids=include_sequence_ids,
@@ -626,17 +654,18 @@ def linear_search(config: SearchConfig,
 
         unique_lengths[kmer_indices] = np.where(
             # Where the count is equal to the number of sequences to search on
-            # (i.e. a unique count per sequence specified)
+            # (i.e. a unique count of 1 per sequence specified)
             (count_list == num_sequences) &
             # And if there is no current unique length recorded
             (unique_lengths[kmer_indices] == 0),
-            # Record the minimum kmer length found if it less than the current
+            # Record the minimum kmer length (assuming increasing kmer lengths)
             kmer_length,
             # Otherwise keep the current unique length
             unique_lengths[kmer_indices])
 
-        # We are finished searching at this position if the count was 1
-        finished_search[kmer_indices] = (count_list == 1)
+        # We are finished searching at this position if the count was equal to
+        # the number of sequences being searched on
+        finished_search[kmer_indices] = (count_list == num_sequences)
 
         config.log("{} unique {}-mers found".format(
             np.count_nonzero(unique_lengths == kmer_length), kmer_length))
@@ -652,18 +681,32 @@ def get_kmer_counts(config: SearchConfig,
     count_list = np.zeros(len(sequence_indices), dtype=np.uint32)
 
     # For every sequence segment in the list of sequence segments for this
-    # index (usually just one)
-    for fmindex_filepath in config.fmindex_filepaths:
-        # For each index (usually just one)
-        # NB: We assume a guarantee that we have > 0 indexes at this point
-        for i, sequence in enumerate(sequences):
+    # Match each sequence segment with each index file. Usually one each.
+    for i, (fmindex_filepath, sequence) in \
+            enumerate(product(config.fmindex_filepaths, sequences)):
 
-            if (len(sequences) or
-               len(config.fmindex_filepaths)) > 1:
+        use_forward = config.use_forward[i]
+        use_reverse_complement = config.use_reverse_complement[i]
+
+        if config.verbose:
+            num_sequences = len(sequences)
+            if (num_sequences > 1 or
+               len(config.fmindex_filepaths) > 1):
+                rc_string = ""
+                if use_reverse_complement is False:
+                    rc_string += " (no reverse complement)"
+                elif use_forward is False:
+                    rc_string += " (no forward strand)"
+
                 config.log(f"Counting k-mers from "
-                           f"{config.fmindex_filepaths[i]} in index "
-                           f"{fmindex_filepath}")
+                           f"{config.fasta_filepaths[i%num_sequences]} in "
+                           f"index {fmindex_filepath}" + rc_string)
 
+        # TODO: Put everything below into a new function
+        # Make inner function called get_kmer_counts
+
+        # If we are counting on the forward strand (default)
+        if use_forward:
             # Count the occurences of kmers on the forward strand
             count_list += np.array(count_kmers_from_sequence(
                                    str(fmindex_filepath),
@@ -673,28 +716,28 @@ def get_kmer_counts(config: SearchConfig,
                                    config.num_threads),
                                    dtype=np.uint32)
 
-            # If we are not skipping the reverse complement strand (default)
-            if config.use_reverse_complement:
-                # Count the occurrences of kmers on the reverse complement
-                # strand
-                # TODO: Add option for a complement table
-                # TODO: The reverse complement should only be calculated once
-                reverse_complement_sequence = \
-                    sequence.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
+        # If we are not skipping the reverse complement strand (default)
+        if use_reverse_complement:
+            # Count the occurrences of kmers on the reverse complement
+            # strand
+            # TODO: Add option for a complement table
+            # TODO: The reverse complement should only be calculated once
+            reverse_complement_sequence = \
+                sequence.translate(COMPLEMENT_TRANSLATE_TABLE)[::-1]
 
-                sequence_length = len(sequence)
-                # TODO: Should ideally only do this once
-                reverse_index_list = [sequence_length - i - kmer_length
-                                      for i, kmer_length in
-                                      zip(sequence_indices, kmer_lengths)]
+            sequence_length = len(sequence)
+            # TODO: Should ideally only do this once
+            reverse_index_list = [sequence_length - i - kmer_length
+                                  for i, kmer_length in
+                                  zip(sequence_indices, kmer_lengths)]
 
-                count_list += np.array(count_kmers_from_sequence(
-                                         str(fmindex_filepath),
-                                         reverse_complement_sequence,
-                                         reverse_index_list,
-                                         kmer_lengths,
-                                         config.num_threads),
-                                       dtype=np.uint32)
+            count_list += np.array(count_kmers_from_sequence(
+                                     str(fmindex_filepath),
+                                     reverse_complement_sequence,
+                                     reverse_index_list,
+                                     kmer_lengths,
+                                     config.num_threads),
+                                   dtype=np.uint32)
 
     # If any element in the count list is 0
     # NB: np.all will evalute to False if any element is 0 and it is more

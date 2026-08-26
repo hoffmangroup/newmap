@@ -195,6 +195,7 @@ static PyObject* py_count_kmers_from_sequence(PyObject* self, PyObject* args) {
 
     awFmParallelSearchCount(index, searchList, numThreads);
 
+    // NB: We don't use numpy to avoid wheel distrubition difficulties
     PyObject* returnList = PyList_New(numKmers);
     createCountList(returnList, searchList);
 
