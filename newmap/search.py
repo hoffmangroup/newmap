@@ -43,8 +43,8 @@ class SearchConfig:
     kmer_lengths: list[int]
     is_binary_search: bool
 
-    use_forward: list[bool]
-    use_reverse_complement: list[bool]
+    use_forward: list[bool] = field(default_factory=lambda: [True])
+    use_reverse_complement: list[bool] = field(default_factory=lambda: [True])
     output_directory: Path = Path.cwd()
 
     # NB: Cannot assign mutable default arguments since they would be shared
