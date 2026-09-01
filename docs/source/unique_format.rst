@@ -18,7 +18,8 @@ Data types
 The suffix of the filename specifies the type of the underlying binary data.
 The suffix ``uint8`` specifies that each minimum length is represented with a
 single unsigned 8 bit integer (1 byte each), and ``uint16`` likewise has each
-length represented by unsigned 16 bit integer (2 bytes each). No other data is
+length represented by unsigned 16 bit integer (2 bytes each). All lengths that
+need more than 1 byte are stored in little endian format. No other data is
 stored in the file. The data type is chosen based on the maximum length
 specified in range specified to :ref:`search`. For example, in a search
 range from 20 to 255, the maximum unique minimum length is less than or equal
