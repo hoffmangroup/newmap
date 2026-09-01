@@ -86,9 +86,9 @@ The resulting BED file will be the single read mappability, and the WIG file
 will be the multi-read mappability.
 
 ### Precomputed unique lengths for common genomes (<=8 bp to 65535 bp)
-For the common genomes below, you may wish to download the precomputed unique lengths below.
+For the common genomes below, you may wish to download the precomputed minimum unique lengths.
 From these precomputed lengths, you can calculate mappability tracks for a specific read length within the range of 8bp to 65535 bp using "newmap track".
-This option can skip both the "index" and "search" steps above.
+This option skips the necessary "index" and "search" steps above.
 
 Organism | Genome / Assembly | Unique lengths
 ---------|-------------------|:-------------:
