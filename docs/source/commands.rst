@@ -60,12 +60,15 @@ position from a given range of read/k-mer lengths. See the
 
 Positional Arguments
 --------------------
-- `fasta_file`: The name of the fasta file containing sequence(s) where each
+- `fasta_file(s)`: The name of the fasta file containing sequence(s) where each
   sequence ID will have a ``unique`` file generated. Must be equal to or a
   subset of the sequence used to generate the index used for ``index-file``.
-- `index_file`: The name of the index file to use for searching for unique
+  Optionally, comma separate multiple fasta files to use as search input on
+  each specified index.
+- `index_file(s)`: The name of the index file to use for searching for unique
   sequences. Defaults to the name of the fasta file with the extension replaced
-  with `.awfmi`.
+  with `.awfmi`. Optionally comma separate multiple index files for each input
+  fasta file to search in.
 
 Output Options
 --------------
@@ -84,6 +87,12 @@ Output Options
   specified, all sequences will be searched. Sequence IDs specified that do not
   exist in the `fasta_file` will have no effect and will be ignored. Cannot be
   used with `include-sequences`.
+- `exclude-strands`: A comma separated list of strands to exclude. 'norc' will
+  exclude the reverse-complement strand. 'nofw' will exclude the forward
+  strand. 'none' will include both strands. Exclusion will happen in order
+  based on the sequence and index combination. Example: 'norc,nofw,nofw,norc'
+  will exclude search necessary for non-directional bisulfite mappability if
+  sequence and index order matches. (default: none)
 - `verbose`: Print verbose output. Includes summary statistics at end of each
   sequence. Default is False.
 
