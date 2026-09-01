@@ -44,7 +44,7 @@ You can also install from Bioconda:
 
    $ conda install -c bioconda newmap
 
-To install from source (on linux), clone the repository and run:
+To install from source (on linux), clone `the repository <https://github.com/hoffmangroup/newmap>`_ and run:
 
 .. code-block:: console
 

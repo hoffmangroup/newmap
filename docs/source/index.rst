@@ -10,7 +10,9 @@ Newmap documentation
 Newmap records mers of length *k* if *k* is unique across the entire sequence.
 From these unique lengths, at given length *k*, Newmap can then output a
 single-read mappability Browser Extensible Data (BED) file and a multi-read
-mappability Wiggle file.
+mappability Wiggle file
+
+Source code is available on `Github <https://github.com/hoffmangroup/newmap>`_.
 
 Contents
 --------
