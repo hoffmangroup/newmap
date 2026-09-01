@@ -97,13 +97,15 @@ def parse_subcommands():
         "fasta_file",
         metavar=FASTA_FILE_METAVAR,
         help="File of (gzipped) fasta file for kmer generation. Optionally "
-             "comma separate multiple fasta files to simultaneously process.")
+             "comma separate multiple fasta files to use as search input on "
+             "each specified index.")
 
     unique_length_parser.add_argument(
         "index_file",
         nargs="?",
         help="File of reference index file to count occurances in. Optionally "
-             "comma separate multiple index files to simulatenously count in. "
+             "comma separate multiple index files for each input fasta file "
+             "to search in. "
              f"(default: basename of {FASTA_FILE_METAVAR} with "
              f"the {INDEX_EXTENSION} extension)")
 
@@ -145,10 +147,10 @@ def parse_subcommands():
              f"(default: all sequences in {FASTA_FILE_METAVAR})")
 
     unique_length_output_parameter_group.add_argument(
-        "--strand-exclusions",
+        "--exclude-strands",
         metavar="EXCLUDED_STRANDS",
         default=None,
-        help="A comma separated list of strands to exclude from the search. "
+        help="A comma separated list of strands to exclude. "
              "'norc' will exclude the reverse-complement strand. "
              "'nofw' will exclude the forward strand. "
              "'none' will include both strands. "

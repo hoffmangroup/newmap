@@ -85,6 +85,16 @@ file that contains the mappability for all sequences listed in the
 The resulting BED file will be the single read mappability, and the WIG file
 will be the multi-read mappability.
 
+### Precomputed unique lengths for common genomes (<=8 bp to 65535 bp)
+For the common genomes below, you may wish to download the precomputed unique lengths below.
+From these precomputed lengths, you can calculate mappability tracks for a specific read length within the range of 8bp to 65535 bp using "newmap track".
+This option can skip both the "index" and "search" steps above.
+
+Organism | Genome / Assembly | Unique lengths
+-------------------------------------------------------
+Human | [T2T-CHM13v2](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_009914755.1/) | [Download](https://zenodo.org/records/16754723)
+Human | [GRCh38](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.40/) ([no alternative loci scaffolds analysis set](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GRCh38_major_release_seqs_for_alignment_pipelines/README_analysis_sets.txt)) | [Download](https://zenodo.org/records/16754904)
+
 
 ## Credits
 Newmap is a reimplementation of the output of Umap. Umap was developed by Mehran Karimzadeh.
