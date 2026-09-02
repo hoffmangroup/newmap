@@ -73,7 +73,7 @@ class SearchConfig:
         initial_search_length = args.initial_search_length
         include_sequences_arg = args.include_sequences
         exclude_sequences_arg = args.exclude_sequences
-        strand_exclusion_arg = args.strand_exclusions
+        exclude_strands_arg = args.exclude_strands
 
         # If an output directory was specified
         if output_directory:
@@ -171,8 +171,8 @@ class SearchConfig:
         use_reverse_complement = [True] * num_strand_exclusions
 
         # Parse any strand exclusion arguments
-        if strand_exclusion_arg:
-            strand_exclusion_strs = strand_exclusion_arg.split(",")
+        if exclude_strands_arg:
+            strand_exclusion_strs = exclude_strands_arg.split(",")
             for i, strand_exclusion_str in enumerate(strand_exclusion_strs):
                 if strand_exclusion_str == "nofw":
                     use_reverse_complement[i] = True
