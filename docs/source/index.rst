@@ -22,4 +22,5 @@ Contents
     commands
     unique_format
     umap
+    bisulfite
     credits
