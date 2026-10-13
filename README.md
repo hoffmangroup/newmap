@@ -95,6 +95,9 @@ Organism | Genome / Assembly | Unique lengths
 Human | [T2T-CHM13v2](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_009914755.1/) | [Download](https://zenodo.org/records/16754723)
 Human | [GRCh38](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.40/) ([no alternative loci scaffolds analysis set](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GRCh38_major_release_seqs_for_alignment_pipelines/README_analysis_sets.txt)) | [Download](https://zenodo.org/records/16754904)
 
+### Bisulfite mappability
+For detailed instructions on how to produce bisulfite mappability tracks, see the [documentation](https://newmap.readthedocs.io/en/latest/bisulfite.html).
+
 
 ## Credits
 Newmap is a reimplementation of the output of Umap. Umap was developed by Mehran Karimzadeh.
