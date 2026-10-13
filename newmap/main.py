@@ -25,6 +25,7 @@ INDEX_SUBCOMMAND = "index"
 UNIQUE_LENGTHS_SUBCOMMAND = "search"
 GENERATE_MAPPABILITY_SUBCOMMAND = "track"
 
+
 def parse_subcommands():
     parser = ArgumentParser(
         description="Newmap: A tool for generating mappability "
