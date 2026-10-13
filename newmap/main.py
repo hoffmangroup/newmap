@@ -3,6 +3,11 @@ from importlib.metadata import version
 import sys
 
 from newmap import index, search, track
+from newmap.search import (
+    DEFAULT_KMER_BATCH_SIZE,
+    DEFAULT_KMER_SEARCH_RANGE,
+    DEFAULT_THREAD_COUNT
+)
 from newmap.util import DEFAULT_MAPPABILITY_READ_LENGTH, INDEX_EXTENSION
 from newmap.track import STDOUT_FILENAME
 
@@ -13,19 +18,12 @@ __version__ = version("newmap")
 DEFAULT_COMPRESSION_RATIO = 8
 DEFAULT_SEED_LENGTH = 12
 
-# Defaults for minimum kmer length counting
-# TODO: Check where/if these are used
-DEFAULT_KMER_BATCH_SIZE = 10000000
-DEFAULT_THREAD_COUNT = 1
-DEFAULT_KMER_SEARCH_RANGE = "20:200"
-
 FASTA_FILE_METAVAR = "fasta_file"
 INDEX_FILE_METAVAR = "index_file"
 
 INDEX_SUBCOMMAND = "index"
 UNIQUE_LENGTHS_SUBCOMMAND = "search"
 GENERATE_MAPPABILITY_SUBCOMMAND = "track"
-
 
 def parse_subcommands():
     parser = ArgumentParser(

@@ -15,10 +15,16 @@ from newmap.util import INDEX_EXTENSION
 from newmap.util import optional_gzip_open, verbose_print
 from newmap.fasta import SequenceSegment, sequence_segments
 
+# Defaults for minimum kmer length counting
+DEFAULT_KMER_BATCH_SIZE = 10_000_000
+DEFAULT_THREAD_COUNT = 1
+DEFAULT_KMER_SEARCH_RANGE = "20:200"
+
 KMER_RANGE_SEPARATOR = ":"
 SEQUENCE_ID_SEPARATOR = ","
 INDEX_FILE_SEPARATOR = ","
 FASTA_FILE_SEPARATOR = ","
+STRAND_EXCLUSION_SEPARATOR = ","
 
 COMPLEMENT_TRANSLATE_TABLE = bytes.maketrans(b'ACGTacgt', b'TGCAtgca')
 ALLOWED_BASES = b'ACGTactg'
@@ -33,7 +39,7 @@ def nil_search_log(*_: str):
 @dataclass(frozen=True)
 class SearchConfig:
     # NB: All defaults here are not guaranteed to match the command line
-    # interface defaults, they are for python interface convience only
+    # interface defaults, they are for python interface convenience only
 
     # Position args
     fasta_filepaths: list[Path]
@@ -54,14 +60,14 @@ class SearchConfig:
     exclude_sequence_ids: list[bytes] = field(default_factory=list)
 
     # Performance arguments
-    num_threads: int = 1
-    kmer_batch_size: int = 1000000
-    initial_search_length: int = 0  # NB: default of none
+    num_threads: int = DEFAULT_THREAD_COUNT
+    kmer_batch_size: int = DEFAULT_KMER_BATCH_SIZE
+    initial_search_length: int = 0  # NB: default of no initial search length
 
     # Verbosity
     # NB: Only used when additional calculations are needed for logging
     verbose: bool = False
-    # Logging function (initialzed based on verbosity)
+    # Logging function (initialized based on verbosity)
     log: Callable[[str], None] = field(init=False)
 
     @classmethod
@@ -85,16 +91,19 @@ class SearchConfig:
         else:
             output_directory = Path(".")
 
-        # Process the fasta filename specificaiton into a list of Paths
+        # Process the fasta filename specification into a list of Paths
         # even if only a single fasta file is specified
-        if FASTA_FILE_SEPARATOR in fasta_file_specification:
-            fasta_filenames = [Path(filename) for filename in
-                               fasta_file_specification
-                               .split(FASTA_FILE_SEPARATOR)]
-        else:
-            fasta_filenames = [Path(fasta_file_specification)]
+        fasta_filenames = [Path(filename) for filename in
+                           fasta_file_specification
+                           .split(FASTA_FILE_SEPARATOR)]
 
-        # Process the index filename specificaiton into a list of Paths
+        # Check that the FASTA files exist
+        for fasta_filename in fasta_filenames:
+            if not fasta_filename.is_file():  # type: ignore
+                raise FileNotFoundError(f"FASTA file not found: "
+                                        f"{fasta_filename}")
+
+        # Process the index filename specification into a list of Paths
         # even if only a single index file is specified
 
         # If no index filename was specified
@@ -104,22 +113,23 @@ class SearchConfig:
             index_filename = Path(fasta_filename).stem + "." + INDEX_EXTENSION
             # NB: Explicit list of length 1
             index_filenames = [Path(index_filename)]
-        elif INDEX_FILE_SEPARATOR in index_file_specification:
+        # Otherwise get a list of one or more index filenames
+        else:
             index_filenames = [Path(filename) for filename in
                                index_file_specification
                                .split(INDEX_FILE_SEPARATOR)]
-        else:
-            # NB: A single index filename in a list
-            index_filenames = [Path(index_file_specification)]
 
-        # Check that the index files exists
+        # TODO: Validate the number of fm indices and fasta files match
+        # Mention order matters?
+
+        # Check that the index files exist
         for index_filename in index_filenames:
             if not index_filename.is_file():  # type: ignore
                 raise FileNotFoundError(f"Index file not found: "
                                         f"{index_filename}")
 
         # Parse the kmer lengths
-        # NB: Either comma seperated or a range seperated by a colon
+        # NB: Either comma separated or a range separated by a colon
         kmer_lengths = []
         use_binary_search = False
         # If a colon is present in the kmer lengths argument
@@ -135,7 +145,7 @@ class SearchConfig:
                                  "end length")
             kmer_lengths = list(range(min_kmer_length, max_kmer_length + 1))
             use_binary_search = True
-        # Otherwise assume a single digit or a list of digits seperated by a
+        # Otherwise assume a single digit or a list of digits separated by a
         # comma
         # NB: Assume in sorted order?
         else:
@@ -172,17 +182,15 @@ class SearchConfig:
 
         # Parse any strand exclusion arguments
         if exclude_strands_arg:
-            strand_exclusion_strs = exclude_strands_arg.split(",")
+            strand_exclusion_strs = exclude_strands_arg.split(
+                                    STRAND_EXCLUSION_SEPARATOR)
             for i, strand_exclusion_str in enumerate(strand_exclusion_strs):
                 if strand_exclusion_str == "nofw":
-                    use_reverse_complement[i] = True
                     use_forward[i] = False
                 elif strand_exclusion_str == "norc":
                     use_reverse_complement[i] = False
-                    use_forward[i] = True
                 elif strand_exclusion_str == "none":
-                    use_reverse_complement[i] = True
-                    use_forward[i] = True
+                    pass
                 else:
                     raise ValueError("Invalid strand exclusion argument: "
                                      f"{strand_exclusion_str}")
