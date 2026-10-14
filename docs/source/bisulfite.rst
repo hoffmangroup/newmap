@@ -4,7 +4,7 @@ Bisulfite Mappability Example
 =============================
 
 Newmap can be used to generate bisulfite mappability tracks for a given reference genome.
-Here we provide a protocol for generating non-directional, directional, and PBAT bisulfite mappability.
+Here we provide a protocol for generating non-directional, and directional including Post-Bisulfite adaptor tagging (PBAT) bisulfite mappability.
 All examples shown below will be for 50 bp reads and using 16 threads as an example.
 For this example, verbosity will be enabled by default for any troubleshooting purposes and should not slow down output by any significant margin.
 Adjust the read lengths and threads as necessary.
@@ -15,8 +15,8 @@ Steps for bisulfite mappability
 
 For all bisulfite mappability, the first step is to convert the reference two different ways:
 
-1. Create a reference where all C's are converted to T's.
-2. Create a reference where all G's are converted to A's.
+1. Create a converted genome reference sequence where all C's are converted to T's.
+2. Create a converted genome reference sequence where all G's are converted to A's.
 
 These sequences will be referred to as ``genome.CtoT.fa`` and ``genome.GtoA.fa`` respectively.
 
@@ -91,3 +91,5 @@ A combination of both search examples above.
         --exclude-strands=norc,nofw,nofw,norc \
         genome.CtoT.fa,genome.GtoA.fa \
         genome.CtoT.awfmi,genome.GtoA.awfmi
+
+Run :ref:`newmap track <track>` to generate the 50 bp mappability tracks.

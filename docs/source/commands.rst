@@ -91,8 +91,9 @@ Output Options
   exclude the reverse-complement strand. 'nofw' will exclude the forward
   strand. 'none' will include both strands. Exclusion will happen in order
   based on the sequence and index combination. Example: 'norc,nofw,nofw,norc'
-  will exclude search necessary for non-directional bisulfite mappability if
-  sequence and index order matches. (default: none)
+  will exclude search necessary for non-directional
+  :ref:`bisulfite mappability <bisulfite>` if sequence and index order matches.
+  (default: none)
 - `verbose`: Print verbose output. Includes summary statistics at end of each
   sequence. Default is False.
 
